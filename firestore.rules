@@ -1,0 +1,22 @@
+rules_version = '2';
+// כללי האבטחה של קטלוג המשתלה
+// - כל משתמש מחובר רואה את הקטלוג (צמחים, קטגוריות, מאפיינים, גדלים, תמונות, פרטי העסק)
+// - רק מנהלים רואים מחירים, ספקים, עונתיות ולקוחות, ורק מנהלים משנים נתונים
+// - מנהל = יש מסמך באוסף admins שהמזהה שלו הוא האימייל (באותיות קטנות)
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function myEmail() { return request.auth.token.email.lower(); }
+    function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(myEmail())); }
+
+    match /admins/{email} {
+      allow read: if signedIn() && (email == myEmail() || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /{coll}/{id} {
+      allow read: if signedIn() && (!(coll in ['clients', 'settings', 'plantPricing', 'admins']) || isAdmin());
+      allow write: if isAdmin() && coll != 'admins';
+    }
+  }
+}

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>הוראות התקנה – קטלוג המשתלה</title>
+<style>
+:root{--bg:#EEF2EC;--surface:#fff;--ink:#16241A;--ink-2:#4A5A4E;--leaf:#2E6B3C;--leaf-soft:#D6E7D3;--clay-soft:#F4E2D4;--line:#C9D4C4}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 "Assistant","Segoe UI",Arial,sans-serif}
+main{max-width:760px;margin:0 auto;padding:28px max(16px,env(safe-area-inset-right,0px)) 60px max(16px,env(safe-area-inset-left,0px))}
+h1{color:var(--leaf);font-size:2rem;margin:0 0 6px}
+h2{font-size:1.25rem;margin:0 0 8px}
+.lead{color:var(--ink-2);margin:0 0 24px}
+ol.steps{list-style:none;padding:0;margin:0;counter-reset:s;display:flex;flex-direction:column;gap:14px}
+ol.steps>li{counter-increment:s;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+ol.steps>li h2::before{content:counter(s) ". ";color:var(--leaf)}
+ul{padding-inline-start:22px;margin:6px 0}
+code{background:var(--leaf-soft);border-radius:6px;padding:1px 6px;direction:ltr;unicode-bidi:isolate;font-size:.92em}
+.note{background:var(--clay-soft);border-radius:12px;padding:12px 16px;margin-top:10px}
+.muted{color:var(--ink-2)}
+</style>
+</head>
+<body>
+<main>
+<h1>הוראות התקנה</h1>
+<p class="lead">GitHub Pages לאתר, Firebase לנתונים, לתמונות ולכניסה. הכל בחינם ובלי כרטיס אשראי. בערך 20 דקות, פעם אחת. שמות הכפתורים באנגלית, ולפעמים משתנים מעט.</p>
+
+<ol class="steps">
+<li><h2>פרויקט חדש ב־Firebase</h2>
+<ul>
+<li>נכנסים ל־<code>console.firebase.google.com</code> ← <b>Create a project</b>. שם, למשל <code>nursery-catalog</code>. אפשר לכבות את Google Analytics.</li>
+<li>נשארים בתוכנית <b>Spark</b> (החינמית). לא צריך לשדרג.</li>
+</ul></li>
+
+<li><h2>הפעלת כניסה עם מייל וסיסמה</h2>
+<ul>
+<li><b>Build</b> ← <b>Authentication</b> ← <b>Get started</b> ← <b>Email/Password</b> ← להפעיל (Enable) ← <b>Save</b>.</li>
+<li>לשונית <b>Users</b> ← <b>Add user</b>: האימייל שלך וסיסמה. זה המשתמש שלך.</li>
+<li>כדי שזרים לא יוכלו להירשם: <b>Settings</b> ← <b>User actions</b> ← לבטל את <b>Enable create (sign-up)</b>. אם האפשרות לא מופיעה, זה לא נורא: מי שנרשם בעצמו רואה רק את הקטלוג, בלי מחירים ולקוחות.</li>
+</ul></li>
+
+<li><h2>מסד הנתונים וכללי האבטחה</h2>
+<ul>
+<li><b>Build</b> ← <b>Firestore Database</b> ← <b>Create database</b> ← מיקום באירופה (למשל <code>eur3</code>) ← <b>Production mode</b>.</li>
+<li>לשונית <b>Rules</b>: מוחקים את מה שכתוב, מדביקים את כל התוכן של הקובץ <code>firestore.rules</code> מהתיקייה ← <b>Publish</b>.</li>
+<li>הגדרתך כמנהל: לשונית <b>Data</b> ← <b>Start collection</b> ← Collection ID: <code>admins</code> ← Document ID: <b>האימייל שלך באותיות קטנות</b> ← אפשר להוסיף שדה כלשהו (למשל <code>role</code> = <code>owner</code>) ← <b>Save</b>.</li>
+</ul></li>
+
+<li><h2>חיבור האפליקציה לפרויקט</h2>
+<ul>
+<li>גלגל השיניים ← <b>Project settings</b> ← למטה <b>Your apps</b> ← הסמל <code>&lt;/&gt;</code> (Web) ← שם כלשהו ← <b>Register app</b>. לא לסמן Firebase Hosting.</li>
+<li>מופיע קוד עם <code>firebaseConfig</code>. מעתיקים את הערכים <code>apiKey</code>, <code>authDomain</code>, <code>projectId</code>, <code>appId</code>.</li>
+<li>פותחים את <code>config.js</code> בפנקס רשימות, מדביקים כל ערך במקומו בין הגרשיים, ושומרים.</li>
+<li>אם נוח יותר, שלח לי את הקטע הזה ואחזיר לך תיקייה מוכנה. ההגדרות האלה נועדו להיות גלויות באתר. האבטחה נעשית בכללים מהשלב הקודם.</li>
+</ul></li>
+
+<li><h2>העלאה ל־GitHub Pages</h2>
+<ul>
+<li>ב־GitHub: <b>New repository</b> ← שם, למשל <code>nursery</code> ← <b>Public</b> ← <b>Create</b>.</li>
+<li><b>uploading an existing file</b> (או <b>Add file</b> ← <b>Upload files</b>) ← גוררים את <b>כל מה שבתוך</b> התיקייה <code>plant-app</code>, כולל התיקיות <code>vendor</code> ו־<code>icons</code> ← <b>Commit changes</b>.</li>
+<li><b>Settings</b> ← <b>Pages</b> ← Source: <b>Deploy from a branch</b> ← Branch: <code>main</code> / <code>(root)</code> ← <b>Save</b>.</li>
+<li>אחרי דקה-שתיים מופיעה הכתובת, למשל <code>https://שם-המשתמש.github.io/nursery/</code>.</li>
+<li>חוזרים ל־Firebase: <b>Authentication</b> ← <b>Settings</b> ← <b>Authorized domains</b> ← <b>Add domain</b> ← <code>שם-המשתמש.github.io</code>.</li>
+</ul></li>
+
+<li><h2>התקנה בטלפון</h2>
+<ul>
+<li>פותחים את הכתובת ונכנסים עם המייל והסיסמה. מתחברים פעם אחת, וזה נשמר.</li>
+<li><b>אנדרואיד (Chrome):</b> תפריט ⋮ ← <b>התקנת אפליקציה</b> או <b>הוספה למסך הבית</b>.</li>
+<li><b>אייפון (Safari):</b> כפתור השיתוף ← <b>הוספה למסך הבית</b>.</li>
+</ul></li>
+
+<li><h2>העברת הנתונים מהגרסה ב־Claude</h2>
+<ul>
+<li>בגרסה ב־Claude: <b>הגדרות</b> ← <b>גיבוי מלא</b> ← לסמן "כולל תמונות" ← <b>הורדת גיבוי</b>.</li>
+<li>באפליקציה החדשה: <b>הגדרות</b> ← <b>שחזור מקובץ גיבוי</b> ← בוחרים את הקובץ.</li>
+</ul></li>
+
+<li><h2>עובדים</h2>
+<ul>
+<li>לכל עובד: <b>Authentication</b> ← <b>Users</b> ← <b>Add user</b>.</li>
+<li>מי שלא נמצא באוסף <code>admins</code> רואה רק את קטלוג הצמחים, בלי מחירים, ספקים ולקוחות, ולא יכול לשנות. זה נאכף בכללי Firebase, לא רק במסך.</li>
+<li>למנהל נוסף: מוסיפים עוד מסמך לאוסף <code>admins</code>, עם האימייל שלו כ־Document ID.</li>
+</ul></li>
+</ol>
+
+<h2 style="margin-top:28px">חשוב לדעת</h2>
+<div class="note">
+<ul>
+<li><b>לא נרדם:</b> גם אם לא נכנסים חודשים, האפליקציה עובדת מיד.</li>
+<li><b>בלי קליטה:</b> רואים את הנתונים ואת התמונות שכבר נצפו. שינויים נשמרים במכשיר ונשלחים לבד כשהחיבור חוזר.</li>
+<li><b>תמונות:</b> נשמרות בתוך מסד הנתונים, ומוקטנות אוטומטית לגודל שמתאים לטלפון ולמצגת. המקום החינמי מספיק לכמה אלפי תמונות.</li>
+<li><b>גיבוי:</b> פעם בחודש, <b>הגדרות</b> ← <b>הורדת גיבוי</b>.</li>
+<li><b>עדכונים:</b> כשאשלח גרסה חדשה, מעלים את הקבצים החדשים לאותו מאגר ב־GitHub (<b>Add file</b> ← <b>Upload files</b>), ומחליפים את הקיימים. לא להחליף את <code>config.js</code> שלך.</li>
+<li><b>בגרסה הזו אין</b> חיפוש חכם, זיהוי מתמונה, מילוי אוטומטי והצעת גינה, כי אלה דורשים את Claude. כל השאר עובד.</li>
+</ul>
+</div>
+<p class="muted" style="margin-top:20px">נתקעת? צלם מסך ושלח לי.</p>
+</main>
+</body>
+</html>
