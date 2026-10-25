@@ -470,6 +470,7 @@ function sizesFor(p) {
   const list = limited ? p.sizeIds.map(sizeById).filter(Boolean) : S.sizes;
   return list.slice().sort(byOrder).map(s => ({size: s, price: priceOf(p, s.id)})).filter(x => limited || x.price != null);
 }
+const showCatPrices = () => canWrite && !!(S.pricing && S.pricing.showCatalogPrices);
 function minPrice(p) { const v = sizesFor(p).map(x => x.price).filter(x => x != null); return v.length ? Math.min(...v) : null; }
 function fmtVal(f, v) {
   if (v == null || v === '' || (Array.isArray(v) && !v.length)) return '';
@@ -605,7 +606,8 @@ function renderCatalogChrome() {
     ${(cl.areas || []).length ? `<label for="bannerArea" class="muted">אזור:</label><select class="inp" id="bannerArea" style="width:auto;min-height:36px">${['', ...cl.areas].map(a => `<option value="${esc(a)}" ${UI.lastArea === a ? 'selected' : ''}>${esc(a || NO_AREA)}</option>`).join('')}</select>` : ''}
     <button class="btn sm" data-go="clients">לרשימה</button><button class="btn sm ghost" id="stopClient">סיום בחירה</button></div>` : '';
   $('#addPlantBtn').hidden = !canWrite; $('#bulkBtn').hidden = !canWrite || !sample;
-  $$('#sort option[value^="price"]').forEach(o => o.hidden = !canWrite);
+  $$('#sort option[value^="price"]').forEach(o => o.hidden = !showCatPrices());
+  if (!showCatPrices() && UI.sort.startsWith('price')) { UI.sort = 'name'; $('#sort').value = 'name'; }
 }
 function renderResults() {
   const el = $('#results');
@@ -622,7 +624,7 @@ function renderResults() {
   }
   const cl = canWrite && S.clients.find(c => c.id === UI.activeClient);
   el.innerHTML = `<div class="grid">${list.map(p => {
-    const imgs = p.images || []; const mp = canWrite ? minPrice(p) : null;
+    const imgs = p.images || []; const mp = showCatPrices() ? minPrice(p) : null;
     return `<article class="card">
       ${cl ? `<button class="btn sm primary quick-add" data-quick="${esc(p.id)}" aria-label="הוספת ${esc(p.name)} לרשימה של ${esc(cl.name)}">+ ללקוח</button>` : ''}
       <button class="open" data-open="${esc(p.id)}" aria-label="${esc(p.name)}, פרטים">
@@ -634,7 +636,7 @@ function renderResults() {
           <div class="facts">${keyFacts(p)}</div>
           ${canWrite && usageCount(p.id) ? `<div class="used">נבחר אצל ${usageCount(p.id) === 1 ? 'לקוח אחד' : usageCount(p.id) + ' לקוחות'}</div>` : ''}
           ${(() => { const ss = seasonState(p); if (!ss || !ss.known) return ''; return `<div class="season ${ss.plantNow ? 'on' : ''}">${ss.plantNow ? 'עונת שתילה עכשיו' : 'לא בעונת שתילה'}${ss.availNow ? ' · זמין במשתלות' : ''}</div>`; })()}
-          ${canWrite ? `<div class="price-from">${mp != null ? 'החל מ־' + ILS(mp) : '<span class="muted" style="font-weight:600">אין מחיר במחירון</span>'}</div>` : ''}
+          ${showCatPrices() ? `<div class="price-from">${mp != null ? 'החל מ־' + ILS(mp) : '<span class="muted" style="font-weight:600">אין מחיר במחירון</span>'}</div>` : ''}
         </div>
       </button></article>`;
   }).join('')}</div>`;
@@ -823,7 +825,7 @@ function openPlant(id) {
       ${(p.varieties || []).length ? `<div><div class="section-title">זנים</div><ul style="margin:0;padding-inline-start:20px">${p.varieties.map(v => `<li><b>${esc(v.name)}</b>${v.desc ? ' · ' + esc(v.desc) : ''}</li>`).join('')}</ul></div>` : ''}
       ${why ? `<div class="smart-box" style="margin:0"><p><b>למה בחיפוש החכם:</b> ${esc(why)}</p></div>` : ''}
       ${rowsAttr}
-      ${canWrite ? `<div><div class="section-title">מחירים${pr.supplier ? ' · ספק: ' + esc(pr.supplier) : ''}</div>${sz.length ? `<div class="tscroll"><table class="t"><thead><tr><th>גודל</th><th>מחיר ללקוח</th><th>קנייה</th></tr></thead><tbody>${sz.map(x => { const inf = priceInfo(p, x.size.id); return `<tr><td>${esc(x.size.label)}</td><td><b>${inf.price != null ? ILS(inf.price) : '—'}</b>${inf.sale != null ? ' <span class="hint">(קבוע)</span>' : ''}</td><td class="muted">${inf.cost != null ? ILS(inf.cost) + ' +' + inf.markup + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>` : '<p class="hint" style="margin:0">אין מחיר לצמח הזה. קבעו מחיר קנייה לקטגוריה שלו במחירון, או מחיר מיוחד בעריכת הצמח.</p>'}</div>` : ''}
+      ${showCatPrices() ? `<div><div class="section-title">מחירים${pr.supplier ? ' · ספק: ' + esc(pr.supplier) : ''}</div>${sz.length ? `<div class="tscroll"><table class="t"><thead><tr><th>גודל</th><th>מחיר ללקוח</th><th>קנייה</th></tr></thead><tbody>${sz.map(x => { const inf = priceInfo(p, x.size.id); return `<tr><td>${esc(x.size.label)}</td><td><b>${inf.price != null ? ILS(inf.price) : '—'}</b>${inf.sale != null ? ' <span class="hint">(קבוע)</span>' : ''}</td><td class="muted">${inf.cost != null ? ILS(inf.cost) + ' +' + inf.markup + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>` : '<p class="hint" style="margin:0">אין מחיר לצמח הזה. קבעו מחיר קנייה לקטגוריה שלו במחירון, או מחיר מיוחד בעריכת הצמח.</p>'}</div>` : ''}
       ${(() => { const ss = seasonState(p); if (!ss) return ''; return `<div><div class="section-title">עונתיות · רק אצלך</div><dl class="attrs"><dt>שתילה</dt><dd>${esc(monthsText(ss.plantMonths) || 'לא הוגדר')}</dd><dt>זמין במשתלות</dt><dd>${esc(monthsText(ss.availMonths) || 'לא הוגדר')}</dd></dl></div>`; })()}
       ${p.notes ? `<div><div class="section-title">הערות</div><p style="margin:0;white-space:pre-wrap">${esc(p.notes)}</p></div>` : ''}
       <div><div class="section-title">מידע מהאינטרנט</div><div class="links">
@@ -837,7 +839,7 @@ function openPlant(id) {
      <div class="field" style="flex:1 1 170px"><label for="addCl">הוספה לרשימת לקוח</label><select class="inp" id="addCl">${S.clients.map(c => `<option value="${esc(c.id)}" ${cl && cl.id === c.id ? 'selected' : ''}>${esc(c.name || 'ללא שם')}</option>`).join('')}</select></div>
      <div class="field" style="flex:1 1 130px"><label for="addAr">אזור בגינה</label><select class="inp" id="addAr">${areaOpts(cl)}</select></div>
      ${(p.varieties || []).length ? `<div class="field" style="flex:1 1 140px"><label for="addVar">זן</label><select class="inp" id="addVar"><option value="">—</option>${p.varieties.map(v => `<option>${esc(v.name)}</option>`).join('')}</select></div>` : ''}
-     <div class="field" style="flex:1 1 150px"><label for="addSz">גודל</label><select class="inp" id="addSz">${(sz.length ? sz : S.sizes.map(s => ({size: s, price: null}))).map(x => `<option value="${esc(x.size.id)}">${esc(x.size.label)}${x.price != null ? ' · ' + ILS(x.price) : ''}</option>`).join('')}</select></div>
+     <div class="field" style="flex:1 1 150px"><label for="addSz">גודל</label><select class="inp" id="addSz">${(sz.length ? sz : S.sizes.map(s => ({size: s, price: null}))).map(x => `<option value="${esc(x.size.id)}">${esc(x.size.label)}${showCatPrices() && x.price != null ? ' · ' + ILS(x.price) : ''}</option>`).join('')}</select></div>
      <div class="field" style="flex:0 0 84px"><label for="addQty">כמות</label><input class="inp" id="addQty" type="number" min="1" value="1" inputmode="numeric"></div>
      <div class="field" style="justify-content:flex-end"><button class="btn primary" id="addGo">הוספה</button></div>
   </div>` : ''}`);
@@ -898,7 +900,6 @@ function openEditor(id, prefill = null, preUploaded = [], opts = {}) {
   if (opts.photoBlob && preUploaded[0]) localBlobs.set(preUploaded[0], opts.photoBlob);
   const fields = S.fields.slice(); // fields added from inside the editor join this list
   let saved = false;
-  const suppliers = [...new Set(S.plantPricing.map(x => (x.supplier || '').trim()).filter(Boolean))];
   const canPhotoAI = !!(sample && imgLimits && assets);
 
   const optionHtml = (f, o, v) => f.type === 'multi'
@@ -958,14 +959,6 @@ function openEditor(id, prefill = null, preUploaded = [], opts = {}) {
         <div class="field" style="flex:0 1 170px"><label for="nf-group">קבוצה</label><input class="inp" id="nf-group" list="grpList"><datalist id="grpList">${fieldGroups().map(([g]) => `<option value="${esc(g)}">`).join('')}</datalist></div>
         <button type="button" class="btn primary" id="nf-go">הוספה</button>
       </div></div>
-    <fieldset><legend>ספק, גדלים ומחירים</legend>
-      <div class="form-grid" style="margin-bottom:12px">
-        <div class="field"><label for="ed-sup">ספק</label><input class="inp" id="ed-sup" list="supList" value="${esc(pr.supplier || '')}" placeholder="שם המשתלה שממנה קונים"><datalist id="supList">${suppliers.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
-        <div class="field"><label for="ed-mk">אחוז רווח לצמח הזה</label><input class="inp" id="ed-mk" type="number" step="any" inputmode="decimal" value="${esc(pr.markup ?? '')}" placeholder="ריק = לפי הקטגוריה"></div>
-      </div>
-      <p class="hint" style="margin-top:0">מחיר הקנייה מגיע מהמחירון לפי הקטגוריה. כתבו מחיר קנייה אחר רק אם לצמח הזה הוא שונה. "מחיר קבוע" עוקף את החישוב. סמנו "זמין" רק אם הצמח נמכר בחלק מהגדלים.</p>
-      ${S.sizes.length ? `<div class="tscroll"><table class="t"><thead><tr><th>זמין</th><th>גודל</th><th>קנייה מהמחירון</th><th>קנייה לצמח</th><th>מחיר קבוע</th><th>מחיר ללקוח</th></tr></thead><tbody id="szRows"></tbody></table></div>` : '<p class="hint">אין גדלים. הוסיפו אותם במסך המחירון.</p>'}
-    </fieldset>
     <div class="field"><label for="ed-notes">הערות גידול, טיפול ומידע ללקוח</label><textarea class="inp" id="ed-notes">${esc(p.notes)}</textarea></div>
     <div class="links"><a class="btn sm" id="meltLink" target="_blank" rel="noopener" href="${esc(meltserUrl(p))}">בדיקה באתר משתלת מלצר</a><a class="btn sm" id="gImg" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(p.latin || p.name)}">תמונות בגוגל</a></div>
     <p class="hint" id="edErr" role="alert" style="color:var(--danger);margin:0"></p>
@@ -1001,30 +994,13 @@ function openEditor(id, prefill = null, preUploaded = [], opts = {}) {
     va.disabled = false;
   };
 
-  /* pricing table */
+  /* seasonality (kept with the owner-only data) */
   const syncPr = () => {
-    $$('[data-szav]', form).forEach(x => { const i = p.sizeIds.indexOf(x.dataset.szav); if (x.checked && i < 0) p.sizeIds.push(x.dataset.szav); if (!x.checked && i >= 0) p.sizeIds.splice(i, 1); });
-    $$('[data-szc]', form).forEach(x => { if (x.value === '') delete pr.cost[x.dataset.szc]; else pr.cost[x.dataset.szc] = Number(x.value); });
-    $$('[data-szs]', form).forEach(x => { if (x.value === '') delete pr.sale[x.dataset.szs]; else pr.sale[x.dataset.szs] = Number(x.value); });
-    const mk = $('#ed-mk').value; pr.markup = mk === '' ? null : Number(mk);
-    pr.supplier = $('#ed-sup').value.trim();
     pr.plantMonths = $$('[data-pm]:checked', form).map(x => +x.dataset.pm);
     pr.availMonths = $$('[data-am]:checked', form).map(x => +x.dataset.am);
   };
-  const calcCell = s => { const inf = priceInfo({...p, categoryIds: readCats()}, s.id, pr); return inf.price != null ? `<b>${ILS(inf.price)}</b>${inf.sale == null ? `<span class="calc">+${inf.markup}%</span>` : ''}` : '<span class="muted">—</span>'; };
-  const renderSz = () => {
-    const tb = $('#szRows'); if (!tb) return;
-    const cats = readCats();
-    tb.innerHTML = S.sizes.slice().sort(byOrder).map(s => { const base = catCost(cats, s.id); return `<tr>
-      <td><input type="checkbox" data-szav="${esc(s.id)}" aria-label="זמין ב${esc(s.label)}" ${p.sizeIds.includes(s.id) ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--leaf)"></td>
-      <td>${esc(s.label)}</td><td>${base != null ? ILS(base) : '<span class="muted">—</span>'}</td>
-      <td><input class="inp" style="width:100px;direction:ltr" type="number" min="0" step="any" inputmode="decimal" data-szc="${esc(s.id)}" value="${esc(pr.cost[s.id] ?? '')}" aria-label="מחיר קנייה ל${esc(s.label)}"></td>
-      <td><input class="inp" style="width:100px;direction:ltr" type="number" min="0" step="any" inputmode="decimal" data-szs="${esc(s.id)}" value="${esc(pr.sale[s.id] ?? '')}" aria-label="מחיר קבוע ל${esc(s.label)}"></td>
-      <td data-calc="${esc(s.id)}">${calcCell(s)}</td></tr>`; }).join('');
-  };
-  renderSz(); toggleSeason();
-  form.addEventListener('input', e => { if (e.target.matches('[data-szc],[data-szs],#ed-mk')) { syncPr(); S.sizes.forEach(s => { const c = $(`[data-calc="${CSS.escape(s.id)}"]`, form); if (c) c.innerHTML = calcCell(s); }); } });
-  form.addEventListener('change', e => { if (e.target.matches('[data-catc]')) { syncPr(); renderSz(); } });
+  const renderSz = () => {};
+  toggleSeason();
 
   /* add an option to a list field, from inside the editor */
   async function addOption(f, value, check = true) {
@@ -1199,7 +1175,7 @@ ${schema}
       createdAt: orig ? (orig.createdAt || Date.now()) : Date.now(), updatedAt: Date.now()};
     if (orig && orig.example) data.example = true;
     const seasonal = formSeasonal();
-    const pricing = {cost: pr.cost, sale: pr.sale, supplier: pr.supplier || '', markup: pr.markup ?? null,
+    const pricing = {cost: pr.cost || {}, sale: pr.sale || {}, supplier: pr.supplier || '', markup: pr.markup ?? null,
       plantMonths: seasonal ? pr.plantMonths : [], availMonths: seasonal ? pr.availMonths : []};
     $('#edSave').disabled = true;
     const ref = orig ? db.doc('plants/' + orig.id) : db.collection('plants').doc();
@@ -1422,7 +1398,22 @@ function renderPrices(host) {
         <div class="field" style="flex:0 0 170px"><label for="pct">עדכון מחירי הקנייה ב־%</label><input class="inp" id="pct" type="number" step="any" placeholder="למשל 5"></div>
         <button class="btn" id="applyPct">עדכון</button><span class="hint">למשל כשהספקים מעלים מחירים. ערך שלילי מוריד.</span></div>
     </div>
+    <div class="panel stack">
+      <div><h3 style="font-size:1.3rem">מחיר לפי צמח</h3><p class="hint" style="margin:4px 0 0">ספק, אחוז רווח, גדלים זמינים, ומחיר קנייה או מחיר קבוע לצמח מסוים. צמח שלא שיניתם לו כלום מקבל את המחיר של הקטגוריה שלו.</p></div>
+      <div class="field"><label for="prQ">חיפוש צמח</label><input class="inp" id="prQ" type="search" autocomplete="off" value="${esc(UI.prQ || '')}" placeholder="שם הצמח או הספק"></div>
+      <div id="prList"></div>
+    </div>
   </div>`;
+  const renderPrList = () => {
+    const q = norm(UI.prQ || '');
+    const list = S.plants.filter(p => !q || norm(p.name + ' ' + (p.latin || '') + ' ' + (pp(p.id).supplier || '')).includes(q)).sort((a, b) => String(a.name).localeCompare(String(b.name), 'he'));
+    const shown = list.slice(0, 60);
+    $('#prList').innerHTML = list.length ? `<div class="tscroll"><table class="t"><thead><tr><th>צמח</th><th>ספק</th><th>מחיר ללקוח</th><th></th></tr></thead><tbody>${shown.map(p => { const r = pp(p.id); const special = Object.keys(r.cost || {}).length + Object.keys(r.sale || {}).length + (num(r.markup) != null ? 1 : 0); const mp = minPrice(p);
+      return `<tr><td><b>${esc(p.name)}</b>${special ? ' <span class="hint">· מחיר מיוחד</span>' : ''}</td><td>${esc(r.supplier || '')}</td><td>${mp != null ? 'החל מ־' + ILS(mp) : '<span class="muted">—</span>'}</td><td><button class="btn sm" data-prp="${esc(p.id)}">עריכה</button></td></tr>`; }).join('')}</tbody></table></div>${list.length > shown.length ? `<p class="hint">מוצגים ${shown.length} מתוך ${list.length}. חפשו כדי לצמצם.</p>` : ''}` : '<p class="muted" style="margin:0">לא נמצאו צמחים.</p>';
+  };
+  renderPrList();
+  $('#prQ', host).oninput = e => { UI.prQ = e.target.value; renderPrList(); };
+  $('#prList', host).onclick = e => { const b = e.target.closest('[data-prp]'); if (b) openPlantPricing(b.dataset.prp); };
   $('#defMk', host).onchange = e => upsert('settings/prices', {defaultMarkup: num(e.target.value)});
   $('#rnd', host).onchange = e => upsert('settings/prices', {rounding: Number(e.target.value)});
   $$('[data-mk]', host).forEach(el => el.onchange = () => upsert('settings/prices', {markup: {[el.dataset.mk]: num(el.value)}}));
@@ -1439,6 +1430,48 @@ function renderPrices(host) {
     const m = JSON.parse(JSON.stringify(P.cost || {}));
     for (const c in m) for (const s in m[c]) if (num(m[c][s]) != null) m[c][s] = Math.round(m[c][s] * (1 + pct / 100) * 100) / 100;
     await wq('settings/prices', async r => { const sn = await r.get(); return sn.exists ? r.update({cost: m}) : r.set({cost: m}); }); toast('מחירי הקנייה עודכנו');
+  };
+}
+
+/* ---------- price of one plant (edited from the price list) ---------- */
+function openPlantPricing(id) {
+  const p = plantById(id); if (!p) return;
+  const pr = JSON.parse(JSON.stringify(pp(id))); delete pr.id; pr.cost ||= {}; pr.sale ||= {};
+  const sizeIds = (p.sizeIds || []).slice();
+  const suppliers = [...new Set(S.plantPricing.map(x => (x.supplier || '').trim()).filter(Boolean))];
+  openDlg(`<div class="dlg-head"><h2 id="dlgTitle">מחיר: ${esc(p.name)}</h2>${X}</div>
+    <form class="dlg-body" id="ppForm" novalidate>
+      <div class="form-grid">
+        <div class="field"><label for="pp-sup">ספק</label><input class="inp" id="pp-sup" list="ppSupList" value="${esc(pr.supplier || '')}" placeholder="שם המשתלה שממנה קונים"><datalist id="ppSupList">${suppliers.map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
+        <div class="field"><label for="pp-mk">אחוז רווח לצמח הזה</label><input class="inp" id="pp-mk" type="number" step="any" inputmode="decimal" value="${esc(pr.markup ?? '')}" placeholder="ריק = לפי הקטגוריה"></div>
+      </div>
+      <p class="hint" style="margin:0">מחיר הקנייה מגיע מהמחירון לפי הקטגוריה. כתבו מחיר קנייה אחר רק אם לצמח הזה הוא שונה. "מחיר קבוע" עוקף את החישוב. סמנו "זמין" רק אם הצמח נמכר בחלק מהגדלים.</p>
+      ${S.sizes.length ? `<div class="tscroll"><table class="t"><thead><tr><th>זמין</th><th>גודל</th><th>קנייה מהמחירון</th><th>קנייה לצמח</th><th>מחיר קבוע</th><th>מחיר ללקוח</th></tr></thead><tbody>
+        ${S.sizes.slice().sort(byOrder).map(z => { const base = catCost(p.categoryIds, z.id); return `<tr>
+          <td><input type="checkbox" data-szav="${esc(z.id)}" aria-label="זמין ב${esc(z.label)}" ${sizeIds.includes(z.id) ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--leaf)"></td>
+          <td>${esc(z.label)}</td><td>${base != null ? ILS(base) : '<span class="muted">—</span>'}</td>
+          <td><input class="inp" style="width:100px;direction:ltr" type="number" min="0" step="any" inputmode="decimal" data-szc="${esc(z.id)}" value="${esc(pr.cost[z.id] ?? '')}" aria-label="מחיר קנייה ל${esc(z.label)}"></td>
+          <td><input class="inp" style="width:100px;direction:ltr" type="number" min="0" step="any" inputmode="decimal" data-szs="${esc(z.id)}" value="${esc(pr.sale[z.id] ?? '')}" aria-label="מחיר קבוע ל${esc(z.label)}"></td>
+          <td data-calc="${esc(z.id)}"></td></tr>`; }).join('')}</tbody></table></div>` : '<p class="hint">אין גדלים. הוסיפו אותם במסך המחירון.</p>'}
+    </form>
+    <div class="dlg-foot"><button class="btn primary" id="ppSave">שמירה</button><button class="btn" data-close>ביטול</button></div>`);
+  const form = $('#ppForm');
+  const read = () => {
+    pr.supplier = $('#pp-sup').value.trim(); const mk = $('#pp-mk').value; pr.markup = mk === '' ? null : Number(mk);
+    pr.cost = {}; pr.sale = {};
+    $$('[data-szc]', form).forEach(x => { if (x.value !== '') pr.cost[x.dataset.szc] = Number(x.value); });
+    $$('[data-szs]', form).forEach(x => { if (x.value !== '') pr.sale[x.dataset.szs] = Number(x.value); });
+    return $$('[data-szav]', form).filter(x => x.checked).map(x => x.dataset.szav);
+  };
+  const calc = () => { read(); S.sizes.forEach(z => { const c = $(`[data-calc="${CSS.escape(z.id)}"]`, form); if (!c) return; const inf = priceInfo(p, z.id, pr); c.innerHTML = inf.price != null ? `<b>${ILS(inf.price)}</b>${inf.sale == null ? `<span class="calc">+${inf.markup}%</span>` : ''}` : '<span class="muted">—</span>'; }); };
+  calc(); form.addEventListener('input', calc);
+  $('#ppSave').onclick = async () => {
+    const av = read(); $('#ppSave').disabled = true;
+    try {
+      await w('plantPricing/' + id, r => r.set({...pr, cost: pr.cost, sale: pr.sale, plantMonths: pr.plantMonths || [], availMonths: pr.availMonths || []}));
+      if (av.join() !== sizeIds.join()) await w('plants/' + id, r => r.update({sizeIds: av}));
+      dlg.close(); toast('המחיר נשמר');
+    } catch { $('#ppSave').disabled = false; }
   };
 }
 
@@ -1497,6 +1530,9 @@ function renderSettings(host) {
         <div class="field" style="flex:0 1 190px"><label for="nft">סוג</label><select class="inp" id="nft">${Object.entries(TYPES).map(([t, l]) => `<option value="${t}">${l}</option>`).join('')}</select></div>
         <button class="btn primary">הוספת מאפיין</button></form>
     </div>
+    <div class="panel stack"><h3 style="font-size:1.3rem">תצוגה</h3>
+      <div class="checks"><label><input type="checkbox" id="showCatPr" ${S.pricing && S.pricing.showCatalogPrices ? 'checked' : ''}>הצגת מחירים בקטלוג הצמחים</label></div>
+      <p class="hint" style="margin:0">כשכבוי, כרטיסי הצמחים ופרטי הצמח מציגים רק מידע על הצמח. המחירים נקבעים ומוצגים במחירון, וברשימות הלקוחות.</p></div>
     ${a11y}
     <div class="panel stack"><h3 style="font-size:1.3rem">גיבוי וייצוא</h3><p class="hint" style="margin:0">קובץ אקסל עם כל הצמחים והמאפיינים, המחירון (קנייה ומחיר ללקוח) ורשימות הלקוחות. כדאי לשמור עותק מדי פעם.</p><div><button class="btn" id="xlsBtn">ייצוא לאקסל</button></div></div>
     ${backupPanelHtml()}
@@ -1506,6 +1542,7 @@ function renderSettings(host) {
   $$('[data-ts]', host).forEach(b => b.onclick = () => { pref.size = b.dataset.ts; applyPref(); renderView(true); });
   $('#hcBtn', host).onclick = () => { pref.contrast = !pref.contrast; applyPref(); renderView(true); };
   $('#xlsBtn', host).onclick = () => exportExcel();
+  $('#showCatPr', host).onchange = e => upsert('settings/prices', {showCatalogPrices: e.target.checked});
   wireBackup(host);
   $('#bz-name', host).onchange = e => upsert('meta/business', {name: e.target.value.trim()});
   $('#bz-phone', host).onchange = e => upsert('meta/business', {phone: e.target.value.trim()});

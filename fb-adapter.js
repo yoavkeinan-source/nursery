@@ -181,13 +181,43 @@
     async list() { return {assets: [], usage: {}}; },
   };
 
-  /* ---------- downloads: a normal browser download ---------- */
+  /* ---------- downloads: on phones open the share sheet (save to files, WhatsApp, mail); on computers a normal download ---------- */
+  const MIME = {pdf: 'application/pdf', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', json: 'application/json', csv: 'text/csv'};
+  const isPhone = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/i.test(navigator.platform || ''));
+  function plainDownload(b, filename) {
+    const url = URL.createObjectURL(b); const a = document.createElement('a');
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  function shareSheet(file) {
+    return new Promise((resolve, reject) => {
+      const d = document.createElement('dialog');
+      d.setAttribute('aria-labelledby', 'shTitle');
+      d.style.width = 'min(420px, calc(100vw - 24px))';
+      d.innerHTML = `<div class="dlg-head"><h2 id="shTitle">הקובץ מוכן</h2></div>
+        <div class="dlg-body"><p style="margin:0;word-break:break-word">${file.name.replace(/[<>&]/g, '')}</p>
+        <p class="hint" style="margin:0">"שיתוף או שמירה" פותח את תפריט השיתוף של הטלפון: שמירה בקבצים, וואטסאפ, מייל.</p></div>
+        <div class="dlg-foot"><button class="btn primary" id="shGo">שיתוף או שמירה</button><button class="btn" id="shOpen">פתיחה</button><button class="btn ghost" id="shX">סגירה</button></div>`;
+      document.body.appendChild(d); d.showModal(); d.querySelector('#shGo').focus();
+      let done = false;
+      const finish = ok => { if (done) return; done = true; d.close(); ok ? resolve() : reject({code: 'declined'}); };
+      d.querySelector('#shGo').onclick = async () => {
+        try { await navigator.share({files: [file], title: file.name}); finish(true); }
+        catch (e) { if (e && e.name === 'AbortError') return; plainDownload(file, file.name); finish(true); }
+      };
+      d.querySelector('#shOpen').onclick = () => { const url = URL.createObjectURL(file); window.open(url, '_blank') || (location.href = url); setTimeout(() => URL.revokeObjectURL(url), 120000); finish(true); };
+      d.querySelector('#shX').onclick = () => finish(false);
+      d.addEventListener('cancel', e => { e.preventDefault(); finish(false); });
+      d.addEventListener('close', () => setTimeout(() => d.remove(), 0));
+    });
+  }
   const downloadsApi = {
     async save({filename, data}) {
+      const ext = (filename.split('.').pop() || '').toLowerCase();
       const b = data instanceof Blob ? data : new Blob([data]);
-      const url = URL.createObjectURL(b); const a = document.createElement('a');
-      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      const file = new File([b], filename, {type: MIME[ext] || b.type || 'application/octet-stream'});
+      if (isPhone && navigator.canShare && navigator.canShare({files: [file]})) return shareSheet(file);
+      plainDownload(file, filename);
     },
   };
 
