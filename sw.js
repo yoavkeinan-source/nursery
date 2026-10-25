@@ -1,10 +1,10 @@
 // Keeps the app usable without reception: the app files and viewed photos are stored on the device.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `shell-${VERSION}`;
 const IMAGES = 'images-v1';
 const FONTS = 'fonts-v1';
-const FILES = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'vendor/firebase-app-compat.js', 'vendor/firebase-auth-compat.js', 'vendor/firebase-firestore-compat.js', 'fb-adapter.js',
-  'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
+const FILES = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-firestore-compat.js', 'fb-adapter.js',
+  'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -39,7 +39,7 @@ self.addEventListener('fetch', e => {
   if (url.hostname.endsWith('googleapis.com') && url.hostname !== 'fonts.googleapis.com') return; // live data: Firestore keeps its own offline copy
   if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') { e.respondWith(cacheFirst(req, FONTS)); return; }
   if (url.origin === self.location.origin) {
-    if (url.pathname.includes('/vendor/')) { e.respondWith(cacheFirst(req, SHELL)); return; }
+    if (/(compat|\.min)\.js$/.test(url.pathname)) { e.respondWith(cacheFirst(req, SHELL)); return; }
     e.respondWith(networkFirst(req, SHELL));
   }
 });

@@ -7,7 +7,7 @@
   const IMG_COLL = 'images';
   let resolveCaps; const capsP = new Promise(r => { resolveCaps = r; });
   window.claude = {use: async name => (await capsP)[name] ?? null};
-  window.APP_LIBS = {pdf: ['vendor/html2canvas.min.js', 'vendor/jspdf.umd.min.js'], xlsx: 'vendor/xlsx.full.min.js'};
+  window.APP_LIBS = {pdf: ['html2canvas.min.js', 'jspdf.umd.min.js'], xlsx: 'xlsx.full.min.js'};
   window.APP_TEXT = {
     workers: 'לכל עובד פותחים משתמש ב-Firebase (Authentication ← Users ← Add user). מי שאינו ברשימת המנהלים רואה רק את קטלוג הצמחים, בלי מחירים, ספקים ולקוחות, ולא יכול לשנות דבר.',
     offline: 'שינויים שתעשו עכשיו יישמרו במכשיר ויישלחו אוטומטית כשהחיבור יחזור. תמונות שלא נצפו קודם לא יופיעו.',
