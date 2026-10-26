@@ -464,7 +464,8 @@ const catPath = id => catChain(id).map(c => c.name).join(' › ');
 function catTree() { const out = []; const walk = (pid, depth) => catKids(pid).forEach(c => { if (out.some(x => x.c.id === c.id)) return; out.push({c, depth}); walk(c.id, depth + 1); }); walk('', 0); S.categories.forEach(c => { if (!out.some(x => x.c.id === c.id)) out.push({c, depth: 0}); }); return out; }
 const plantInCat = (p, id) => { const d = catDesc(id); return (p.categoryIds || []).some(x => d.has(x)); };
 /* a category's own value, or the nearest parent's */
-const inherited = (map, id, get = v => v) => { for (const c of catChain(id).reverse()) { const v = map && map[c.id] != null ? get(map[c.id]) : null; if (v != null) return v; } return null; };
+const catRoot = id => catChain(id)[0];
+const inherited = (map, id, get = v => v) => { const r = catRoot(id); const v = r && map && map[r.id] != null ? get(map[r.id]) : null; return v ?? null; };
 const sizeById = id => S.sizes.find(s => s.id === id);
 const pp = id => S.plantPricing.find(x => x.id === id) || {};
 function roundPrice(v) { const r = Number(S.pricing.rounding) || 1; return Math.round(v / r) * r; }
@@ -1410,10 +1411,10 @@ function renderPrices(host) {
       <form id="addSize" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="newSize">גודל חדש</label><input class="inp" id="newSize" style="flex:1 1 220px;width:auto" placeholder="למשל: מיכל 25 ליטר, עציץ קוטר 30"><button class="btn primary">הוספת גודל</button></form>
     </div>
     <div class="panel stack">
-      <div><h3 style="font-size:1.3rem">מחיר קנייה לפי קטגוריה וגודל</h3><p class="hint" style="margin:4px 0 0">מתחת לכל מחיר קנייה מוצג המחיר ללקוח. תת־קטגוריה שהשארתם ריקה מקבלת את המחיר והרווח של הקטגוריה שמעליה. רואים את המסך הזה רק אתם.</p></div>
+      <div><h3 style="font-size:1.3rem">מחיר קנייה לפי קטגוריה וגודל</h3><p class="hint" style="margin:4px 0 0">מתחת לכל מחיר קנייה מוצג המחיר ללקוח. המחירים נקבעים לקטגוריות הראשיות בלבד, וכל תתי־הקטגוריות שלהן מקבלות אותו מחיר. צמח עם מחיר שונה מעדכנים ב"מחיר לפי צמח". רואים את המסך הזה רק אתם.</p></div>
       ${S.categories.length && sz.length ? `<div class="tscroll matrix"><table class="t"><thead><tr><th>קטגוריה</th><th>% רווח</th>${sz.map(s => `<th>${esc(s.label)}</th>`).join('')}</tr></thead><tbody>
-        ${catTree().map(({c, depth}) => { const pa = catParent(c); const inhMk = pa ? markupFor([pa.id]) : (P.defaultMarkup ?? '');
-          return `<tr><td style="padding-inline-start:${10 + depth * 22}px">${depth ? '<span class="muted" aria-hidden="true">└ </span>' : ''}<span class="cat"><span class="dot" style="background:${esc(c.color)}"></span>${esc(c.name)}</span></td>
+        ${catKids('').map(c => ({c, depth: 0})).map(({c, depth}) => { const inhMk = P.defaultMarkup ?? '';
+          return `<tr><td><span class="cat"><span class="dot" style="background:${esc(c.color)}"></span>${esc(c.name)}</span></td>
           <td><input class="inp" style="width:76px" type="number" step="any" inputmode="decimal" data-mk="${esc(c.id)}" value="${esc(P.markup && P.markup[c.id] != null ? P.markup[c.id] : '')}" placeholder="${esc(inhMk)}" aria-label="אחוז רווח ${esc(catPath(c.id))}"></td>
           ${sz.map(s => { const own = num(P.cost && P.cost[c.id] && P.cost[c.id][s.id]); const eff = catCost([c.id], s.id); const fromParent = own == null && eff != null; const sale = eff != null ? roundPrice(eff * (1 + markupFor([c.id]) / 100)) : null;
             return `<td><input class="inp" type="number" min="0" step="any" inputmode="decimal" data-mc="${esc(c.id)}" data-ms="${esc(s.id)}" value="${esc(own ?? '')}" placeholder="${fromParent ? esc(eff) : ''}" aria-label="מחיר קנייה ${esc(catPath(c.id))}, ${esc(s.label)}"><span class="calc">${sale != null ? 'ללקוח ' + ILS(sale) + (fromParent ? ' · מהקטגוריה מעל' : '') : '&nbsp;'}</span></td>`; }).join('')}</tr>`; }).join('')}
@@ -1447,7 +1448,7 @@ function renderPrices(host) {
   $$('[data-szu]', host).forEach(b => b.onclick = () => reorder(+b.dataset.szu, -1));
   $$('[data-szd]', host).forEach(b => b.onclick = () => reorder(+b.dataset.szd, 1));
   $$('[data-szx]', host).forEach(b => b.onclick = async () => { const s = sizeById(b.dataset.szx); if (!await confirmBox('מחיקת גודל', `למחוק את "${s.label}"? המחירים שלו לא יוצגו יותר.`)) return; await wq('sizes/' + s.id, r => r.delete()); });
-  $('#addSize', host).onsubmit = async e => { e.preventDefault(); const v = $('#newSize').value.trim(); if (!v) return; const ref = db.collection('sizes').doc(); await wq(ref.path, r => r.set({label: v, order: sz.length})); };
+  $('#addSize', host).onsubmit = async e => { e.preventDefault(); const v = $('#newSize').value.trim(); if (!v) return; const ref = db.collection('sizes').doc(); await wq(ref.path, r => r.set({label: v, order: sz.length})); if (document.activeElement) document.activeElement.blur(); toast(`הגודל "${v}" נוסף`); renderView(true); };
   $('#applyPct', host).onclick = async () => {
     const pct = Number($('#pct').value); if (!pct) return;
     if (!await confirmBox('עדכון מחירי קנייה', `לעדכן את כל מחירי הקנייה בקטגוריות ב־${pct}%? מחירים מיוחדים של צמחים לא ישתנו.`, 'עדכון')) return;
@@ -1595,9 +1596,17 @@ function renderSettings(host) {
     if (!await confirmBox('מחיקת קטגוריה', `למחוק את "${c.name}"? ${n ? n + ' צמחים כבר לא ישויכו אליה, אבל הם לא יימחקו. ' : ''}${kids.length ? 'תתי־הקטגוריות שלה יעברו ' + (pa ? 'אל "' + pa.name + '"' : 'לרמה הראשית') + '.' : ''}`)) return;
     for (const k of kids) await wq('categories/' + k.id, r => r.update({parentId: pa ? pa.id : ''}));
     await wq('categories/' + c.id, r => r.delete()); });
-  $('#addCat', host).onsubmit = async e => { e.preventDefault(); const v = $('#newCat').value.trim(); if (!v) return; const pid = $('#newCatParent').value; const pa = catById(pid);
-    const ref = db.collection('categories').doc(); UI.lastCatParent = pid;
-    await wq(ref.path, r => r.set({name: v, color: pa ? pa.color : COLORS[S.categories.length % COLORS.length], order: catKids(pid).length, parentId: pid})); };
+  $('#addCat', host).onsubmit = async e => { e.preventDefault(); const inp = $('#newCat'); const v = inp.value.trim();
+    if (!v) { toast('כתבו קודם את שם הקטגוריה'); inp.focus(); return; }
+    const pid = $('#newCatParent').value; const pa = catById(pid);
+    if (catKids(pid).some(c => norm(c.name) === norm(v))) { toast(`"${v}" כבר קיימת ${pa ? 'תחת ' + pa.name : 'ברמה הראשית'}`); return; }
+    const btn = $('#addCat button'); btn.disabled = true; UI.lastCatParent = pid;
+    const ref = db.collection('categories').doc();
+    try { await w(ref.path, r => r.set({name: v, color: pa ? pa.color : COLORS[S.categories.length % COLORS.length], order: catKids(pid).length, parentId: pid})); }
+    catch { btn.disabled = false; return; }
+    if (!catById(ref.id)) S.categories.push({id: ref.id, name: v, color: pa ? pa.color : COLORS[0], order: catKids(pid).length, parentId: pid});
+    inp.value = ''; if (document.activeElement) document.activeElement.blur();
+    toast(`הקטגוריה "${v}" נוספה${pa ? ' תחת ' + pa.name : ''}`); renderView(true); };
   $$('[data-fl]', host).forEach(el => el.onchange = () => wq('fields/' + el.dataset.fl, r => r.update({label: el.value.trim()})));
   $$('[data-ft]', host).forEach(el => el.onchange = () => wq('fields/' + el.dataset.ft, r => r.update({type: el.value})));
   $$('[data-fo]', host).forEach(el => el.onchange = () => wq('fields/' + el.dataset.fo, r => r.update({options: el.value.split(/[,،]/).map(s => s.trim()).filter(Boolean)})));
@@ -1605,7 +1614,7 @@ function renderSettings(host) {
   $$('[data-fu]', host).forEach(el => el.onchange = () => wq('fields/' + el.dataset.fu, r => r.update({unit: el.value.trim()})));
   $$('[data-fcard]', host).forEach(el => el.onchange = () => { if (el.checked && S.fields.filter(f => f.card).length >= 3) { el.checked = false; toast('אפשר להציג עד 3 מאפיינים בכרטיס'); return; } wq('fields/' + el.dataset.fcard, r => r.update({card: el.checked})); });
   $$('[data-fx]', host).forEach(b => b.onclick = async () => { const f = S.fields.find(x => x.id === b.dataset.fx); if (!await confirmBox('מחיקת מאפיין', `למחוק את המאפיין "${f.label}"? הערכים שמולאו בצמחים לא יוצגו יותר.`)) return; await wq('fields/' + f.id, r => r.delete()); });
-  $('#addField', host).onsubmit = async e => { e.preventDefault(); const v = $('#nfl').value.trim(); if (!v) return; const ref = db.collection('fields').doc(); await wq(ref.path, r => r.set({label: v, type: $('#nft').value, options: [], unit: '', card: false, order: S.fields.length})); };
+  $('#addField', host).onsubmit = async e => { e.preventDefault(); const v = $('#nfl').value.trim(); if (!v) return; const ref = db.collection('fields').doc(); await wq(ref.path, r => r.set({label: v, type: $('#nft').value, options: [], unit: '', card: false, order: S.fields.length})); if (document.activeElement) document.activeElement.blur(); toast(`המאפיין "${v}" נוסף`); renderView(true); };
   const de = $('#delExamples', host); if (de) de.onclick = async () => { const ex = S.plants.filter(p => p.example); if (!await confirmBox('מחיקת צמחי הדוגמה', `למחוק ${ex.length} צמחי דוגמה? הקטגוריות, המאפיינים והמחירון יישארו.`)) return;
     for (const p of ex) { await wq('plants/' + p.id, r => r.delete()); await wq('plantPricing/' + p.id, r => r.delete()); } toast('צמחי הדוגמה נמחקו'); };
 }
@@ -1811,7 +1820,7 @@ async function exportExcel() {
       r['הערות'] = p.notes || ''; r['מספר תמונות'] = (p.images || []).length;
       return r;
     });
-    const priceRows = catTree().map(({c}) => { const r = {'קטגוריה': catPath(c.id), '% רווח': S.pricing.markup && S.pricing.markup[c.id] != null ? S.pricing.markup[c.id] : (S.pricing.defaultMarkup ?? '')};
+    const priceRows = catKids('').map(c => { const r = {'קטגוריה': c.name, '% רווח': S.pricing.markup && S.pricing.markup[c.id] != null ? S.pricing.markup[c.id] : (S.pricing.defaultMarkup ?? '')};
       sizes.forEach(s => { const v = num(S.pricing.cost && S.pricing.cost[c.id] && S.pricing.cost[c.id][s.id]); r['קנייה · ' + s.label] = v ?? ''; r['ללקוח · ' + s.label] = v != null ? roundPrice(v * (1 + markupFor([c.id]) / 100)) : ''; });
       return r; });
     const clientRows = [];
