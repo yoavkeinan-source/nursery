@@ -449,6 +449,7 @@ const byOrder = (a, b) => (a.order ?? 999) - (b.order ?? 999) || String(a.name |
 const blob = id => (window.assetUrl ? window.assetUrl(id) : '/_blob/' + id);
 const COLORS = ['#2E6B3C','#C2410C','#B4237A','#7C3AED','#0E7490','#A16207','#4D7C0F','#BE123C','#1D4ED8','#57534E'];
 const NO_AREA = 'כללי';
+const CARD_MAX = 8; // details shown on a plant card
 let toastT;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
 
@@ -461,7 +462,8 @@ function stems(t) {
   [...out].forEach(y => { const m = y.match(/^(.{2,}?)(ות|ים|יות|ה|ת|י)$/); if (m && m[1].length >= 2) out.add(m[1]); });
   return [...out];
 }
-const tokOk = (h, t) => stems(t).some(x => h.includes(x));
+// the word itself may appear anywhere; a shortened form (without prefix or ending) must start a word, so "מרווה" does not match "גרווליאה"
+const tokOk = (h, t) => h.includes(t) || stems(t).some(x => x !== t && (' ' + h).includes(' ' + x));
 const norm = s => String(s ?? '').toLowerCase().replace(/[֑-ׇ]/g, '').replace(/[ךםןףץ]/g, c => FIN[c]).replace(/[׳'"״`.,;:!?()\-_/]/g, ' ').replace(/\s+/g, ' ').trim();
 function lev1(a, b) {
   if (a === b) return true; const la = a.length, lb = b.length; if (Math.abs(la - lb) > 1) return false;
@@ -644,7 +646,7 @@ function catPills(p) {
   return (p.categoryIds || []).map(catById).filter(Boolean).map(c => `<span class="cat"><span class="dot" style="background:${esc(c.color)}"></span>${esc(catPath(c.id))}</span>`).join('');
 }
 function keyFacts(p) {
-  return S.fields.filter(f => f.card).slice(0, 3).map(f => { const v = fmtVal(f, p.attrs && p.attrs[f.id]); return v ? `<span><b>${esc(f.label)}:</b> ${esc(v)}</span>` : ''; }).join('');
+  return S.fields.filter(f => f.card).sort(byOrder).slice(0, CARD_MAX).map(f => { const v = fmtVal(f, p.attrs && p.attrs[f.id]); return v ? `<span><b>${esc(f.label)}:</b> ${esc(v)}</span>` : ''; }).join('');
 }
 function haystack(p) {
   const parts = [p.name, p.latin, p.otherNames, p.notes, ...(p.varieties || []).flatMap(v => [v.name, v.desc])];
@@ -668,7 +670,7 @@ function renderLetters() {
 const fieldById = id => S.fields.find(f => f.id === id);
 const attrVals = (p, fid) => { const v = p.attrs && p.attrs[fid]; return v == null || v === '' ? [] : (Array.isArray(v) ? v : [v]).map(String); };
 const NEG = new Set(['לא', 'בלי', 'ללא', 'אינו', 'שאינו', 'שלא', 'אין']);
-const STOP = new Set(['של', 'עם', 'את', 'כל', 'לי', 'רוצה', 'מחפש', 'מחפשת', 'צריכ', 'צריכה', 'שהוא', 'שהיא', 'שיהיה', 'שיהיו', 'גם', 'או', 'ו', 'ש', 'ה', 'ב', 'ל', 'מ', 'על', 'יותר', 'פחות', 'צמח', 'צמחימ', 'משהו', 'מתאימ', 'מתאימה', 'מתאימימ', 'הכי', 'טוב', 'טובימ', 'ממש', 'קצת', 'כמו', 'מקומ', 'למקומ', 'גינה', 'לגינה', 'בגינה', 'מטר', 'מטרימ', 'מ']);
+const STOP = new Set(['של', 'עם', 'את', 'כל', 'לי', 'רוצה', 'מחפש', 'מחפשת', 'צריכ', 'צריכה', 'שהוא', 'שהיא', 'שיהיה', 'שיהיו', 'גם', 'או', 'ו', 'ש', 'ה', 'ב', 'ל', 'מ', 'על', 'יותר', 'פחות', 'צמח', 'צמחימ', 'משהו', 'מתאימ', 'מתאימה', 'מתאימימ', 'הכי', 'טוב', 'טובימ', 'ממש', 'קצת', 'כמו', 'מקומ', 'למקומ', 'גינה', 'לגינה', 'בגינה', 'מטר', 'מטרימ', 'מ', 'עלים', 'עלווה', 'בעל', 'בעלי', 'בגוון', 'גוון', 'בצבע', 'שיש'].map(x => norm(x)));
 const SUFFIX = new Set(['', 'ה', 'ת', 'י', 'ימ', 'ות', 'ית', 'יות', 'יימ', 'יה']);
 function tokMatch(q, o) {
   if (!q || !o) return false;
@@ -702,11 +704,21 @@ function conceptList() {
   add(['גדל מהר', 'מהיר', 'מהירי צימוח', 'צומח מהר'], 'צימוח מהיר', p => attrVals(p, 'growth').some(v => v.includes('מהיר')), has('growth'));
   add(['איטי', 'גדל לאט'], 'צימוח איטי', p => attrVals(p, 'growth').some(v => v.includes('איטי')), has('growth'));
   add(['עמיד לקור', 'עמיד לקרה', 'קור', 'קרה', 'ירושלים', 'הרים', 'גליל'], 'עמיד לקור', p => attrVals(p, 'frost').some(v => v.includes('עמיד')), has('frost'));
-  add(['ריחני', 'ריחניים', 'ריח'], 'ריחני', p => norm([attrVals(p, 'unique').join(' '), p.notes].join(' ')).includes('ריח'), true);
+  add(['ריחני', 'ריחניים', 'ריח'], 'ריחני', p => /(^| )[והבלמש]?(ריח|ארומטי)/.test(norm([attrVals(p, 'unique').join(' '), p.notes].join(' '))), true);
   const inCatNamed = (p, re) => (p.categoryIds || []).some(id => catChain(id).some(c => re.test(norm(c.name))));
   add(['תבלין', 'תבלינים', 'צמח תבלין', 'צמחי תבלין'], 'צמחי תבלין', p => attrVals(p, 'uses').some(v => v.includes('תבלין')) || inCatNamed(p, /תבלינ/), true);
   add(['מאכל', 'אכיל', 'פרי אכיל', 'עץ פרי', 'עצי פרי', 'פירות'], 'פרי אכיל', p => attrVals(p, 'uses').some(v => v.includes('מאכל')) || inCatNamed(p, /פרי/) || norm(attrVals(p, 'unique').join(' ')).includes('אכיל'), true);
   add(['פורח', 'פורחים', 'פורחת', 'פרחים', 'פרח', 'פריחה'], 'פורח', p => attrVals(p, 'bloomColor').length > 0 || inCatNamed(p, /פורח/), true);
+  /* leaf colour: the "צבע עלווה" field, or Meltzer's leaf description and highlights */
+  // a plant with a filled "צבע עלווה" is judged by it alone; otherwise by its highlights and name
+  const leafHas = (p, opt, re) => attrVals(p, 'leafColor').length ? attrVals(p, 'leafColor').includes(opt)
+    : re.test(norm([attrVals(p, 'unique').join(' '), p.name, (p.varieties || []).map(v => v.name).join(' ')].join(' ')));
+  const lw = (words, nouns = ['עלים', 'עלווה', 'עלה'], bare = true) => (bare ? words : []).concat(...words.map(x => nouns.map(n => n + ' ' + x)));
+  add(lw(['אפור', 'אפורים', 'אפורה', 'אפורות', 'אפרפר', 'כסוף', 'כסופים', 'כסופה', 'כסופות', 'מכסיף', 'מאפיר', 'כסוף אפור']), 'עלווה אפורה-כסופה', p => leafHas(p, 'אפור-כסוף', /(^| )[והבלמש]?(אפור|אפרפ|כסופ|כסוף|מכסיפ|מאפיר)/), true);
+  add(lw(['כחלחל', 'כחלחלים', 'כחלחלה', 'מכחיל', 'כחולים', 'כחולה'], ['עלים', 'עלווה'], false).concat(['כחלחל', 'כחלחלים', 'כחלחלה', 'מכחיל']), 'עלווה כחלחלה', p => leafHas(p, 'כחלחל', /(^| )[והבלמש]?(כחלחל|מכחיל)/), true);
+  add(lw(['אדומים', 'אדומה', 'סגולים', 'סגולה', 'ארגמני', 'ארגמנית', 'בורדו'], ['עלים', 'עלווה'], false).concat(['בורדו']), 'עלווה אדומה-סגולה', p => leafHas(p, 'אדום-סגול', /עלווה (אדומ|סגול|ארגמנ)|ארגמנ|בורדו/), true);
+  add(lw(['מגוון', 'מגוונים', 'מגוונת', 'מנומר'], ['עלים', 'עלווה', 'עלה']).concat(['מגוון', 'מגוונים']), 'עלווה מגוונת', p => leafHas(p, 'מגוון', /(^| )[והבלמש]?(מגוונ|מנומר|מוכתמ)/), true);
+  add(lw(['זהוב', 'זהובים', 'זהובה', 'צהובים', 'צהובה'], ['עלים', 'עלווה'], false), 'עלווה צהובה-זהובה', p => leafHas(p, 'צהוב-זהוב', /עלווה (צהוב|זהוב)|זהוב/), true);
   add(['עץ', 'עצים'], 'עץ', p => attrVals(p, 'lifeForm').some(v => v.includes('עץ')) || inCatNamed(p, /^עצ/), true);
   add(['שיח', 'שיחים'], 'שיח', p => attrVals(p, 'lifeForm').some(v => v.includes('שיח')) || inCatNamed(p, /שיח/), true);
   add(['מטפס', 'מטפסים'], 'מטפס', p => attrVals(p, 'lifeForm').some(v => v.includes('מטפס')) || inCatNamed(p, /מטפס/), true);
@@ -833,7 +845,7 @@ function filtered() {
       const narrowed = list.filter(p => conds.every(c => c.test(p)));
       const textOnly = norm(pq.rest);
       // if the words were really a plant name, fall back to a plain name search
-      const nameHit = S.plants.some(p => norm([p.name, p.latin, p.otherNames].join(' ')).includes(q));
+      const nameHit = S.plants.some(p => [p.name, p.latin, ...String(p.otherNames || '').split(',')].some(n => norm(n).startsWith(q)));
       if (!(nameHit && !narrowed.some(p => norm([p.name, p.latin, p.otherNames].join(' ')).includes(q)))) {
         UI.parsed = {conds: pq.conds, rest: pq.rest};
         list = narrowed; q = textOnly;
@@ -847,6 +859,10 @@ function filtered() {
       const ok = toks.every(t => tokOk(h, t));
       return {p, ok, s: ok ? (nm.startsWith(q) ? 3 : nm.includes(q) ? 2 : 1) : 0, h}; });
     let hits = scored.filter(x => x.ok);
+    // a word that is part of plant names (e.g. "מרווה") shows those plants only, not every plant whose details happen to contain it
+    const nameHay = p => norm([p.name, p.latin, p.otherNames, ...(p.varieties || []).map(v => v.name)].join(' '));
+    const byName = hits.filter(x => { const nh = nameHay(x.p); return toks.every(t => tokOk(nh, t)); });
+    if (byName.length) hits = byName;
     if (!hits.length) {
       hits = scored.filter(x => { const words = x.h.split(' '); return toks.every(t => t.length < 3 ? x.h.includes(t) : tokOk(x.h, t) || words.some(wd => lev1(t, wd) || (wd.length > t.length && lev1(t, wd.slice(0, t.length))))); });
       fuzzy = hits.length > 0;
@@ -1703,7 +1719,7 @@ async function makePdf(c, withPrices, withFacts, progress, opt = {}) {
   const layout = opt.layout === 'grid' ? 'grid' : 'rows'; const withNotes = !!opt.notes;
   const B = brandHex(); const date = new Date().toLocaleDateString('he-IL');
   const imgs = (c.items || []).flatMap(it => { const p = plantById(it.plantId); return p && (p.images || [])[0] ? [p.images[0]] : []; }).concat(S.biz.logoId ? [S.biz.logoId] : []);
-  const factsOf = p => withFacts ? S.fields.filter(f => f.card).slice(0, 3).map(f => { const v = fmtVal(f, p.attrs && p.attrs[f.id]); return v ? `${esc(f.label)}: ${esc(v)}` : ''; }).filter(Boolean).join(' · ') : '';
+  const factsOf = p => withFacts ? S.fields.filter(f => f.card).sort(byOrder).slice(0, CARD_MAX).map(f => { const v = fmtVal(f, p.attrs && p.attrs[f.id]); return v ? `${esc(f.label)}: ${esc(v)}` : ''; }).filter(Boolean).join(' · ') : '';
   const pic = (p, w, h, r = 8) => { const cat = catById((p.categoryIds || [])[0]); return (p.images || []).length ? `<img crossorigin="anonymous" src="${esc(blob(p.images[0]))}" style="width:${w}px;height:${h}px;object-fit:cover;border-radius:${r}px;flex:none;display:block">` : `<div style="width:${w}px;height:${h}px;border-radius:${r}px;flex:none;background:${esc(cat ? cat.color : '#5b7a62')};color:#fff;display:flex;align-items:center;justify-content:center;font-size:${Math.round(h / 2.4)}px;font-family:'Suez One',serif">${esc((p.name || '?')[0])}</div>`; };
   const notesOf = p => withNotes && p.notes ? `<div style="color:#4A5A4E;font-size:12.5px;margin-top:2px;white-space:pre-wrap">${esc(p.notes)}</div>` : '';
   const varOf = it => it.variety ? ` <span style="font-weight:600;color:#4A5A4E">· זן ${esc(it.variety)}</span>` : '';
@@ -1924,7 +1940,7 @@ function renderSettings(host) {
         <button class="btn primary">הוספת קטגוריה</button></form>
     </div>
     <div class="panel stack">
-      <div><h3 style="font-size:1.3rem">מאפיינים של צמח</h3><p class="hint" style="margin:4px 0 0">השדות שממלאים לכל צמח, מסודרים בקבוצות כמו בקטלוג של משתלת מלצר. כל מאפיין נכלל בחיפוש. מאפיינים מסוג בחירה וכן/לא מופיעים גם כמסנן בקטלוג. סמנו "בכרטיס" כדי להציג אותם על כרטיס הצמח (עד 3).</p></div>
+      <div><h3 style="font-size:1.3rem">מאפיינים של צמח</h3><p class="hint" style="margin:4px 0 0">השדות שממלאים לכל צמח, מסודרים בקבוצות כמו בקטלוג של משתלת מלצר. כל מאפיין נכלל בחיפוש. מאפיינים מסוג בחירה וכן/לא מופיעים גם כמסנן בקטלוג. סמנו "בכרטיס" כדי להציג אותם על כרטיס הצמח (עד ${CARD_MAX}). בטלפון, בתצוגת שני כרטיסים בשורה, הם מופיעים בתצוגת רשימה ובחלון הצמח.</p></div>
       <div>${S.fields.map((f, k) => `<div class="list-row" style="align-items:flex-end">
         <div class="field" style="flex:1 1 160px"><label for="fl-${esc(f.id)}">שם המאפיין</label><input class="inp" id="fl-${esc(f.id)}" data-fl="${esc(f.id)}" value="${esc(f.label)}"></div>
         <div class="field" style="flex:0 1 170px"><label for="ft-${esc(f.id)}">סוג</label><select class="inp" id="ft-${esc(f.id)}" data-ft="${esc(f.id)}">${Object.entries(TYPES).map(([t, l]) => `<option value="${t}" ${f.type === t ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
@@ -2000,7 +2016,7 @@ function renderSettings(host) {
   $$('[data-fo]', host).forEach(el => el.onchange = () => wq('fields/' + el.dataset.fo, r => r.update({options: el.value.split(/[,،]/).map(s => s.trim()).filter(Boolean)})));
   $$('[data-fg]', host).forEach(el => el.onchange = () => wq('fields/' + el.dataset.fg, r => r.update({group: el.value.trim()})));
   $$('[data-fu]', host).forEach(el => el.onchange = () => wq('fields/' + el.dataset.fu, r => r.update({unit: el.value.trim()})));
-  $$('[data-fcard]', host).forEach(el => el.onchange = () => { if (el.checked && S.fields.filter(f => f.card).length >= 3) { el.checked = false; toast('אפשר להציג עד 3 מאפיינים בכרטיס'); return; } wq('fields/' + el.dataset.fcard, r => r.update({card: el.checked})); });
+  $$('[data-fcard]', host).forEach(el => el.onchange = () => { if (el.checked && S.fields.filter(f => f.card).length >= CARD_MAX) { el.checked = false; toast(`אפשר להציג עד ${CARD_MAX} מאפיינים בכרטיס`); return; } wq('fields/' + el.dataset.fcard, r => r.update({card: el.checked})); });
   $$('[data-fx]', host).forEach(b => b.onclick = async () => { const f = S.fields.find(x => x.id === b.dataset.fx); if (!await confirmBox('מחיקת מאפיין', `למחוק את המאפיין "${f.label}"? הערכים שמולאו בצמחים לא יוצגו יותר.`)) return; await wq('fields/' + f.id, r => r.delete()); });
   $('#addField', host).onsubmit = async e => { e.preventDefault(); const v = $('#nfl').value.trim(); if (!v) return; const ref = db.collection('fields').doc(); await wq(ref.path, r => r.set({label: v, type: $('#nft').value, options: [], unit: '', card: false, order: S.fields.length})); if (document.activeElement) document.activeElement.blur(); toast(`המאפיין "${v}" נוסף`); renderView(true); };
   const de = $('#delExamples', host); if (de) de.onclick = async () => { const ex = S.plants.filter(p => p.example); if (!await confirmBox('מחיקת צמחי הדוגמה', `למחוק ${ex.length} צמחי דוגמה? הקטגוריות, המאפיינים והמחירון יישארו.`)) return;
@@ -2483,6 +2499,26 @@ async function importBackup(file, progress) {
     }
   }
   const mapImg = id => idMap[id] || (imgs.length ? null : id);
+  if (data.mode === 'merge') {
+    /* update file: adds missing details to existing plants without touching photos, prices or anything already filled in */
+    const all = [];
+    for (const [c, byId] of Object.entries(data.docs)) for (const [id, d] of Object.entries(byId)) all.push([c, id, d]);
+    let k = 0, n = 0;
+    for (const [c, id, d] of all) {
+      progress(`מעדכן ${++k} מתוך ${all.length}…`);
+      if (c === 'plants') {
+        const cur = plantById(id); if (!cur) continue;
+        const attrs = {...(cur.attrs || {})}; let changed = false;
+        for (const [key, v] of Object.entries(d.attrs || {})) { const old = attrs[key]; if (old == null || old === '' || (Array.isArray(old) && !old.length)) { attrs[key] = v; changed = true; } }
+        if (!changed) continue;
+        await w('plants/' + id, r => r.update({attrs, updatedAt: Date.now()})); n++;
+      } else {
+        const exists = (S[c] || []).some(x => x.id === id); if (exists) continue;
+        await w(c + '/' + id, r => r.set(d)); n++;
+      }
+    }
+    return n;
+  }
   const all = [];
   for (const [c, byId] of Object.entries(data.docs)) for (const [id, d] of Object.entries(byId)) {
     const doc = JSON.parse(JSON.stringify(d));
