@@ -388,6 +388,7 @@ label.ai-filled{background:var(--clay-soft)!important}
       <button type="button" class="btn" id="smartBtn" title="חיפוש בשפה חופשית, למשל: עץ פורח צהוב לשמש מלאה שלא גדל מעל 4 מטר"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8zM19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9z"/></svg>חיפוש חכם</button>
       <button type="button" class="btn" id="photoBtn" hidden title="צלמו או בחרו תמונה של צמח, ו־Claude יזהה אותו"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>זיהוי מתמונה</button>
       <input type="file" id="photoIn" accept="image/*" capture="environment" class="sr" tabindex="-1" aria-hidden="true">
+      <button type="button" class="btn" id="photosBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 17l-5-5-8 7"/></svg>תמונות מהירות</button>
       <button type="button" class="btn" id="bulkBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>הוספת רשימה</button>
       <button type="button" class="btn primary" id="addPlantBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>צמח חדש</button>
     </form>
@@ -909,7 +910,7 @@ function renderCatalogChrome() {
   $('#clientBanner').innerHTML = cl ? `<div class="client-banner"><span>בחירת צמחים עבור <b>${esc(cl.name || 'לקוח')}</b> · ${(cl.items || []).length} פריטים ברשימה</span>
     ${(cl.areas || []).length ? `<label for="bannerArea" class="muted">אזור:</label><select class="inp" id="bannerArea" style="width:auto;min-height:36px">${['', ...cl.areas].map(a => `<option value="${esc(a)}" ${UI.lastArea === a ? 'selected' : ''}>${esc(a || NO_AREA)}</option>`).join('')}</select>` : ''}
     <button class="btn sm" data-go="clients">לרשימה</button><button class="btn sm ghost" id="stopClient">סיום בחירה</button></div>` : '';
-  $('#addPlantBtn').hidden = !canWrite; $('#bulkBtn').hidden = !canWrite || !sample;
+  $('#addPlantBtn').hidden = !canWrite; $('#bulkBtn').hidden = !canWrite || !sample; $('#photosBtn').hidden = !canWrite || !assets;
   $$('#sort option[value^="price"]').forEach(o => o.hidden = !showCatPrices());
   if (!showCatPrices() && UI.sort.startsWith('price')) { UI.sort = 'name'; $('#sort').value = 'name'; }
 }
@@ -971,6 +972,7 @@ $('#filterGrid').addEventListener('change', e => { const s = e.target.closest('[
 $('#clientBanner').addEventListener('change', e => { if (e.target.id === 'bannerArea') { UI.lastArea = e.target.value; ls.set('lastArea', UI.lastArea); } });
 $('#addPlantBtn').onclick = () => openEditor(null);
 $('#bulkBtn').onclick = () => openBulk();
+$('#photosBtn').onclick = () => openQuickPhotos();
 $('#smartBtn').onclick = () => smartSearch();
 $('#photoBtn').onclick = () => $('#photoIn').click();
 $('#photoIn').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) identifyPhoto(f); };
@@ -2048,6 +2050,140 @@ const catIdsFromNames = names => (Array.isArray(names) ? names : []).map(n => S.
 const fieldSchema = () => S.fields.map(f => `- "${f.id}": ${f.label}${f.unit ? ' ביחידות ' + f.unit : ''}; סוג ${f.type}${f.options && f.options.length ? '; ערכים מותרים בלבד: ' + f.options.join(' | ') : ''}`).join('\n');
 
 /* ---------- bulk add from a list of names ---------- */
+/* ---------- quick photos: many photos at once, or plant after plant ---------- */
+async function addImagesToPlant(pid, blobs) {
+  const ids = [];
+  for (const f of blobs) { const b = await toJpeg(f); const r = await assets.upload(b, b.type ? undefined : {type: 'image/jpeg'}); ids.push(r.id); }
+  if (!ids.length) return 0;
+  await w('plants/' + pid, async r => { const snap = await r.get(); const cur = (snap.exists && snap.data().images) || []; return r.update({images: [...cur, ...ids], updatedAt: Date.now()}); });
+  return ids.length;
+}
+function matchPlantByFilename(fname) {
+  const base = norm(String(fname).replace(/\.[a-z0-9]+$/i, '').replace(/[_\d]+/g, ' ')); if (base.replace(/\s/g, '').length < 2) return null;
+  let best = null, bestS = 0, tie = false;
+  for (const p of S.plants) {
+    const names = [p.name, p.latin, ...String(p.otherNames || '').split(',')].map(norm).filter(n => n.length >= 2);
+    let sc = 0;
+    for (const n of names) { if (n === base) sc = Math.max(sc, 3); else if (base.includes(n) && n.length >= 3) sc = Math.max(sc, 2 + n.length / 100); else if (n.includes(base) && base.length >= 3) sc = Math.max(sc, 1 + base.length / 100); }
+    if (sc > bestS) { best = p; bestS = sc; tie = false; } else if (sc && sc === bestS) tie = true;
+  }
+  return best && !tie ? best : null;
+}
+function openQuickPhotos() {
+  if (!assets) return;
+  let rows = []; let mode = 'many';
+  const plantOpts = () => S.plants.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'he')).map(p => `<option value="${esc(p.name)}">`).join('');
+  const byName = v => { const n = norm(v); return S.plants.find(p => norm(p.name) === n) || null; };
+  const head = `<div class="dlg-head"><h2 id="dlgTitle">תמונות מהירות</h2>${X}</div>`;
+  const tabs = () => `<div class="view-toggle" role="group" aria-label="אופן העבודה" style="align-self:flex-start">
+      <button type="button" data-qm="many" aria-pressed="${mode === 'many'}" style="padding:0 14px">הרבה תמונות בבת אחת</button>
+      <button type="button" data-qm="one" aria-pressed="${mode === 'one'}" style="padding:0 14px">צמח אחרי צמח</button></div>`;
+  function render() {
+    const body = mode === 'many' ? manyHtml() : oneHtml();
+    openDlg(head + `<div class="dlg-body">${tabs()}${body}</div>`, () => rows.forEach(r => URL.revokeObjectURL(r.url)));
+    $$('[data-qm]', dlg).forEach(b => b.onclick = () => { mode = b.dataset.qm; render(); });
+    mode === 'many' ? wireMany() : wireOne();
+  }
+  /* --- many at once --- */
+  function manyHtml() {
+    const matched = rows.filter(r => r.pid).length;
+    return `<p class="hint" style="margin:0">בוחרים הרבה תמונות יחד. אם שם הקובץ הוא שם הצמח (למשל <b>לבנדר מצוי.jpg</b>) הוא משויך אוטומטית. לכל תמונה אפשר לבחור או לשנות את הצמח בשדה שלידה.${sample && imgLimits ? ` אפשר גם לתת ל־${esc(AI)} לזהות את הצמח מהתמונה.` : ''}</p>
+      <label class="drop" id="qpDrop" for="qpFiles"><b>לחצו לבחירת תמונות, או גררו לכאן</b><span class="hint">אפשר לבחור עשרות תמונות בבת אחת</span></label>
+      <input type="file" id="qpFiles" accept="image/*" multiple class="sr">
+      <datalist id="qpPlants">${plantOpts()}</datalist>
+      ${rows.length ? `<div class="toolbar" style="margin:0"><span class="count">${rows.length} תמונות · ${matched} משויכות</span>
+        ${sample && imgLimits && rows.some(r => !r.pid && !r.done) ? `<button type="button" class="btn clay" id="qpAi">זיהוי הצמחים מהתמונות (${esc(AI)})</button>` : ''}
+        <button type="button" class="btn ghost" id="qpClear">ניקוי</button></div>
+      <div class="stack" style="gap:8px">${rows.map((r, i) => `<div class="list-row" style="flex-wrap:nowrap;gap:10px">
+          <img src="${esc(r.url)}" alt="" class="mini" style="width:64px;height:64px">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+            <input class="inp" list="qpPlants" data-qr="${i}" value="${esc(r.pid ? (plantById(r.pid) || {}).name || '' : '')}" placeholder="שם הצמח…" aria-label="הצמח של תמונה ${i + 1}" ${r.done ? 'disabled' : ''}>
+            <span class="hint" style="font-size:.8em">${esc(r.note || r.file.name)}</span></div>
+          ${r.done ? '<span aria-label="הועלה">✓</span>' : `<button type="button" class="btn sm ghost" data-qx="${i}" aria-label="הסרת התמונה">✕</button>`}</div>`).join('')}</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="btn primary" id="qpGo" ${rows.some(r => r.pid && !r.done) ? '' : 'disabled'}>העלאה ושיוך של ${rows.filter(r => r.pid && !r.done).length} תמונות</button><span class="hint" id="qpState" aria-live="polite"></span></div>` : ''}`;
+  }
+  function addFiles(files) {
+    for (const f of [...files].filter(f => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name))) {
+      const p = matchPlantByFilename(f.name);
+      rows.push({file: f, url: URL.createObjectURL(f), pid: p ? p.id : null, note: p ? 'שויך לפי שם הקובץ' : ''});
+    }
+    render();
+  }
+  function wireMany() {
+    const inp = $('#qpFiles', dlg); inp.onchange = () => { addFiles(inp.files); };
+    const dz = $('#qpDrop', dlg);
+    dz.ondragover = e => { e.preventDefault(); dz.classList.add('over'); }; dz.ondragleave = () => dz.classList.remove('over');
+    dz.ondrop = e => { e.preventDefault(); dz.classList.remove('over'); addFiles(e.dataTransfer.files); };
+    $$('[data-qr]', dlg).forEach(el => el.onchange = () => { const r = rows[+el.dataset.qr]; const p = byName(el.value); r.pid = p ? p.id : null; r.note = p ? 'נבחר ידנית' : (el.value ? 'לא נמצא צמח בשם הזה' : ''); render(); });
+    $$('[data-qx]', dlg).forEach(b => b.onclick = () => { const r = rows.splice(+b.dataset.qx, 1)[0]; URL.revokeObjectURL(r.url); render(); });
+    const cl = $('#qpClear', dlg); if (cl) cl.onclick = () => { rows.forEach(r => URL.revokeObjectURL(r.url)); rows = []; render(); };
+    const ai = $('#qpAi', dlg); if (ai) ai.onclick = async () => {
+      ai.disabled = true; const list = S.plants.slice(0, 600).map(p => `${p.id} | ${p.name}${p.latin ? ' | ' + p.latin : ''}`).join('\n');
+      const todo = rows.filter(r => !r.pid && !r.done); let k = 0;
+      for (const r of todo) {
+        ai.textContent = `מזהה ${++k} מתוך ${todo.length}…`;
+        try { const img = await toJpeg(r.file, 1024, true);
+          const res = await sample.json(`איזה צמח מהקטלוג מופיע בתמונה? אני גנן בישראל.\nהקטלוג (מזהה | שם | שם לטיני):\n${list}\n\nהחזר JSON בלבד: {"id":"מזהה מהקטלוג או ריק אם לא בטוח","name":"שם הצמח שזיהית","confidence":"גבוהה|בינונית|נמוכה"}`, {images: [img]});
+          const p = res && res.id && plantById(res.id);
+          if (p && res.confidence !== 'נמוכה') { r.pid = p.id; r.note = `זוהה בעזרת ${AI} (ודאות ${res.confidence || 'לא ידועה'}) – כדאי לבדוק`; }
+          else r.note = res && res.name ? `${AI} זיהה "${res.name}", לא נמצא בוודאות בקטלוג` : 'לא זוהה';
+        } catch (e) { r.note = aiErr(e, 'הזיהוי נכשל'); if (e && /quota|offline|not_ready|busy/.test(e.code || '')) break; }
+      }
+      render();
+    };
+    const go = $('#qpGo', dlg); if (go) go.onclick = async () => {
+      go.disabled = true; const st = $('#qpState', dlg);
+      const groups = new Map(); rows.filter(r => r.pid && !r.done).forEach(r => { if (!groups.has(r.pid)) groups.set(r.pid, []); groups.get(r.pid).push(r); });
+      let k = 0, total = rows.filter(r => r.pid && !r.done).length, fail = 0;
+      for (const [pid, list] of groups) {
+        st.textContent = `מעלה ${Math.min(k + list.length, total)} מתוך ${total}…`;
+        try { await addImagesToPlant(pid, list.map(r => r.file)); list.forEach(r => { r.done = true; r.note = 'הועלה ל' + ((plantById(pid) || {}).name || ''); }); }
+        catch (e) { fail += list.length; list.forEach(r => r.note = uploadErr(e)); }
+        k += list.length;
+      }
+      toast(fail ? `הועלו ${total - fail} תמונות, ${fail} נכשלו` : `הועלו ${total} תמונות`); render();
+    };
+  }
+  /* --- plant after plant --- */
+  let oneCat = 'all', onlyNo = true, pos = 0, busy = false; const doneIds = new Set();
+  const queue = () => S.plants.filter(p => (oneCat === 'all' || plantInCat(p, oneCat)) && (!onlyNo || (!(p.images || []).length && !doneIds.has(p.id)))).sort((a, b) => String(a.name).localeCompare(String(b.name), 'he'));
+  function oneHtml() {
+    const q = queue(); if (pos >= q.length) pos = Math.max(0, q.length - 1); const p = q[pos];
+    return `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div class="field" style="flex:1 1 200px"><label for="qoCat">קטגוריה</label><select class="inp" id="qoCat"><option value="all">כל הצמחים</option>${catTree().map(({c, depth}) => `<option value="${esc(c.id)}" ${oneCat === c.id ? 'selected' : ''}>${'— '.repeat(depth)}${esc(c.name)}</option>`).join('')}</select></div>
+        <div class="checks"><label><input type="checkbox" id="qoNo" ${onlyNo ? 'checked' : ''}>רק צמחים בלי תמונה</label></div></div>
+      ${p ? `<div class="panel" style="display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center">
+          <span class="hint">${pos + 1} מתוך ${q.length}</span>
+          <h3 style="font-size:1.8rem">${esc(p.name)}</h3>${p.latin ? `<div class="latin" style="text-align:center">${esc(p.latin)}</div>` : ''}
+          <div class="cats" style="justify-content:center">${catPills(p)}</div>
+          ${(p.images || []).length ? `<img src="${esc(blob(p.images[0]))}" alt="" class="mini" style="width:120px;height:90px"><span class="hint">יש כבר ${(p.images || []).length} תמונות</span>` : ''}
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+            <label class="btn primary" for="qoCam" style="min-height:56px;font-size:1.1em">📷 צילום</label><input type="file" id="qoCam" accept="image/*" capture="environment" class="sr">
+            <label class="btn" for="qoGal" style="min-height:56px;font-size:1.1em">🖼 בחירה מהגלריה</label><input type="file" id="qoGal" accept="image/*" multiple class="sr"></div>
+          <div style="display:flex;gap:10px"><button type="button" class="btn ghost" id="qoPrev" ${pos ? '' : 'disabled'}>→ הקודם</button><button type="button" class="btn" id="qoSkip">דילוג ←</button></div>
+          <p class="hint" id="qoState" aria-live="polite" style="margin:0">אחרי שהתמונה עולה עוברים אוטומטית לצמח הבא.</p></div>`
+        : `<div class="empty"><h3>${onlyNo ? 'לכל הצמחים כאן כבר יש תמונה 🎉' : 'אין צמחים בקטגוריה הזו'}</h3></div>`}`;
+  }
+  function wireOne() {
+    $('#qoCat', dlg).onchange = e => { oneCat = e.target.value; pos = 0; render(); };
+    $('#qoNo', dlg).onchange = e => { onlyNo = e.target.checked; pos = 0; render(); };
+    const q = queue(); const p = q[pos]; if (!p) return;
+    const pv = $('#qoPrev', dlg); if (pv) pv.onclick = () => { pos = Math.max(0, pos - 1); render(); };
+    $('#qoSkip', dlg).onclick = () => { pos = Math.min(q.length - 1, pos + 1); if (pos === q.length - 1 && q.length) toast('זה הצמח האחרון ברשימה'); render(); };
+    const handle = async inp => {
+      const files = [...inp.files]; inp.value = ''; if (!files.length || busy) return; busy = true;
+      const st = $('#qoState', dlg); st.textContent = `מעלה ${files.length > 1 ? files.length + ' תמונות' : 'תמונה'}…`;
+      try { await addImagesToPlant(p.id, files); toast(`התמונה נשמרה ל${p.name}`);
+        if (!onlyNo) pos = Math.min(pos + 1, Math.max(0, q.length - 1)); // with "only without photo" the plant leaves the list by itself
+        doneIds.add(p.id);
+      } catch (e) { st.textContent = uploadErr(e); busy = false; return; }
+      busy = false; render();
+    };
+    $('#qoCam', dlg).onchange = e => handle(e.target); $('#qoGal', dlg).onchange = e => handle(e.target);
+  }
+  render();
+}
+
 function openBulk() {
   if (!sample) { toast('הוספת רשימה עם מילוי אוטומטי זמינה כשפותחים את הדף מתוך ' + AI + ''); return; }
   let results = []; let abort = null;
