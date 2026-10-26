@@ -229,7 +229,7 @@
       const c = snap.exists ? snap.data() : {};
       if (!c.siteKey) return null;
       if (!window.fbAI) await new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'firebase-ai-bundle.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
-      const api = window.fbAI.create(cfg, c.siteKey, c.model || cfg.aiModel);
+      const api = window.fbAI.create(cfg, c.siteKey, c.model || cfg.aiModel, c.provider);
       window.AI_STATUS = 'ready';
       return api;
     } catch (e) { console.warn('smart search not available', e); window.AI_STATUS = 'error'; return null; }

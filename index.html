@@ -2541,11 +2541,11 @@ function aiPanelHtml() {
   if (!window.AI_PROVIDER || !canWrite) return '';
   const st = window.AI_STATUS || 'off', key = (S.ai && S.ai.siteKey) || '';
   const msg = st === 'ready' ? '✓ החיפוש החכם פעיל. הוא עובד כשיש אינטרנט; בלי אינטרנט החיפוש הרגיל ממשיך לעבוד.'
-    : key ? 'המפתח נשמר. אם החיפוש החכם עדיין לא פועל, סגרו את האפליקציה ופתחו אותה מחדש.' : 'כבוי. כדי להפעיל, הדביקו כאן את מפתח האתר (Site key) של reCAPTCHA לפי ההוראות.';
+    : key ? 'המפתח נשמר. אם החיפוש החכם עדיין לא פועל, סגרו את האפליקציה ופתחו אותה מחדש.' : 'כבוי. כדי להפעיל, הדביקו כאן את מפתח האתר (Site key) לפי ההוראות.';
   return `<div class="panel stack"><h3 style="font-size:1.3rem">חיפוש חכם עם ${esc(AI)}</h3>
     <p class="hint" style="margin:0">חיפוש בשפה חופשית, זיהוי צמח מתמונה ומילוי מאפיינים אוטומטי, דרך המסלול החינמי של Firebase. נשלחים רק שמות הצמחים והמאפיינים שלהם, בלי מחירים, ספקים ולקוחות. יש מכסה יומית חינמית.</p>
     <p style="margin:0" role="status">${esc(msg)}</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end"><div class="field" style="flex:1 1 280px"><label for="aiKey">מפתח האתר של reCAPTCHA (Site key)</label><input class="inp" id="aiKey" dir="ltr" autocomplete="off" spellcheck="false" value="${esc(key)}"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end"><div class="field" style="flex:1 1 280px"><label for="aiKey">מפתח האתר (Site key) של Fraud Defense / reCAPTCHA</label><input class="inp" id="aiKey" dir="ltr" autocomplete="off" spellcheck="false" value="${esc(key)}"></div>
       <button class="btn primary" id="aiSave">שמירה</button>${sample ? '<button class="btn" id="aiTest">בדיקה</button>' : ''}</div>
     <p class="hint" id="aiState" aria-live="polite" style="margin:0">${esc(UI.aiMsg || '')}</p></div>`;
 }
