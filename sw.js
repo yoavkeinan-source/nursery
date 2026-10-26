@@ -1,9 +1,9 @@
 // Keeps the app usable without reception: the app files and viewed photos are stored on the device.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL = `shell-${VERSION}`;
 const IMAGES = 'images-v1';
 const FONTS = 'fonts-v1';
-const FILES = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-firestore-compat.js', 'fb-adapter.js',
+const FILES = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-firestore-compat.js', 'fb-adapter.js', 'firebase-ai-bundle.js',
   'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

@@ -449,6 +449,7 @@ const byOrder = (a, b) => (a.order ?? 999) - (b.order ?? 999) || String(a.name |
 const blob = id => (window.assetUrl ? window.assetUrl(id) : '/_blob/' + id);
 const COLORS = ['#2E6B3C','#C2410C','#B4237A','#7C3AED','#0E7490','#A16207','#4D7C0F','#BE123C','#1D4ED8','#57534E'];
 const NO_AREA = 'כללי';
+const AI = window.AI_NAME || 'Claude'; // the assistant behind the smart features
 const CARD_MAX = 8; // details shown on a plant card
 let toastT;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
@@ -999,7 +1000,7 @@ function catalogRows(withPrice) {
 async function smartSearch() {
   const q = $('#q').value.trim(); const out = $('#smartOut');
   if (!q) { out.innerHTML = `<div class="smart-box"><p>כתבו בתיבת החיפוש מה הלקוח מחפש, במילים שלכם. למשל: <i>עץ פורח צהוב לשמש מלאה, עד 4 מטר, לא מלכלך ולא רעיל</i>. אחר כך לחצו שוב על "חיפוש חכם".</p></div>`; $('#q').focus(); return; }
-  if (!sample) { out.innerHTML = `<div class="smart-box"><p>החיפוש החכם זמין כשפותחים את הדף מתוך Claude.</p></div>`; return; }
+  if (!sample) { out.innerHTML = `<div class="smart-box"><p>${window.AI_PROVIDER ? 'החיפוש החכם זמין כשיש אינטרנט, אחרי שמפעילים אותו בהגדרות. בינתיים החיפוש הרגיל מבין תנאים כמו "שיח אפור חסכוני במים".' : 'החיפוש החכם זמין כשפותחים את הדף מתוך Claude.'}</p></div>`; return; }
   if (smartAbort) smartAbort.abort(); smartAbort = new AbortController();
   out.innerHTML = `<div class="smart-box" aria-live="polite"><span class="spin" aria-hidden="true"></span><p>מחפש בקטלוג לפי: "${esc(q)}"…</p></div>`;
   const prompt = `אתה עוזר לגנן מקצועי בישראל לבחור צמחים מתוך קטלוג המשתלה שלו.
@@ -1007,7 +1008,7 @@ async function smartSearch() {
 החודש הנוכחי: ${MONTHS[thisMonth() - 1]}.
 
 הקטלוג (שורה לכל צמח: מזהה | שם | קטגוריות | מאפיינים | מחיר | הערות):
-${catalogRows(canWrite)}
+${catalogRows(canWrite && !window.AI_PROVIDER)}
 
 בחר את הצמחים מהקטלוג שמתאימים לבקשה, מהמתאים ביותר. השתמש גם בידע הגינון שלך כשהמאפיינים בקטלוג חסרים.
 בנוסף, הצע עד 4 צמחים מתאימים שאינם בקטלוג.
@@ -1022,7 +1023,7 @@ ${catalogRows(canWrite)}
       <p><b>חיפוש חכם:</b> ${esc(r.summary || '')} ${ids.length ? `נמצאו ${ids.length} צמחים בקטלוג.` : 'לא נמצאו צמחים מתאימים בקטלוג.'}</p>
       ${ids.length ? `<ul style="margin:0;padding-inline-start:20px">${ids.slice(0, 8).map(id => `<li><b>${esc(plantById(id).name)}</b>: ${esc((r.why || {})[id] || '')}</li>`).join('')}</ul>` : ''}
       ${sug.length ? `<p style="margin-top:4px"><b>רעיונות שאינם בקטלוג:</b></p><ul style="margin:0;padding-inline-start:20px">${sug.map(s => `<li>${esc(s.name)} <i class="muted" dir="ltr">${esc(s.latin || '')}</i>: ${esc(s.why || '')} · <a target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(s.latin || s.name)}">תמונות</a></li>`).join('')}</ul>` : ''}
-      <p class="hint">התשובה מבוססת על הקטלוג שלכם ועל ידע הגינון של Claude. כדאי לבדוק לפני המלצה ללקוח.</p>
+      <p class="hint">התשובה מבוססת על הקטלוג שלכם ועל ידע הגינון של ${AI}. כדאי לבדוק לפני המלצה ללקוח.</p>
       </div><button class="btn sm" id="clearSmart">ביטול</button></div>`;
     $('#clearSmart').onclick = () => { UI.smart = null; out.innerHTML = ''; renderView(true); };
     renderView(true);
@@ -1032,7 +1033,10 @@ ${catalogRows(canWrite)}
   }
 }
 function aiErr(e, fallback) {
-  if (e && e.code === 'not_granted') return 'הפעולה דורשת אישור להשתמש ב־Claude. אפשר לאשר בפעם הבאה שתלחצו.';
+  if (e && e.code === 'not_granted') return 'הפעולה דורשת אישור להשתמש ב־' + AI + '. אפשר לאשר בפעם הבאה שתלחצו.';
+  if (e && e.code === 'offline') return 'אין חיבור לאינטרנט כרגע. החיפוש הרגיל עדיין עובד: כתבו בתיבה, למשל "שיח אפור חסכוני במים".';
+  if (e && e.code === 'quota') return 'נגמרה המכסה החינמית להיום. מחר זה יעבוד שוב; עד אז החיפוש הרגיל עובד כרגיל.';
+  if (e && e.code === 'not_ready') return 'החיפוש החכם עוד לא הופעל עד הסוף ב־Firebase. בדקו את שלבי ההפעלה בהגדרות.';
   if (e && e.code === 'rate_limited') return 'יותר מדי בקשות ברגע זה. נסו שוב בעוד דקה.';
   if (e && (e.code === 'image_rejected' || e.code === 'images_unavailable')) return 'לא ניתן לשלוח את התמונה הזו. נסו תמונה אחרת בפורמט JPG או PNG.';
   return fallback;
@@ -1060,7 +1064,7 @@ async function identifyPhoto(file) {
   const url = URL.createObjectURL(img);
   openDlg(`<div class="dlg-head"><h2 id="dlgTitle">זיהוי צמח מתמונה</h2><button class="btn ghost" data-close>סגירה</button></div>
     <div class="dlg-body"><div class="two"><div><img class="id-photo" src="${url}" alt="התמונה שנבחרה"></div>
-    <div id="idOut" class="stack" aria-live="polite"><div class="smart-box" style="margin:0"><span class="spin" aria-hidden="true"></span><p>Claude בוחן את התמונה…</p></div></div></div></div>`,
+    <div id="idOut" class="stack" aria-live="polite"><div class="smart-box" style="margin:0"><span class="spin" aria-hidden="true"></span><p>${AI} בוחן את התמונה…</p></div></div></div></div>`,
     () => URL.revokeObjectURL(url));
   const list = S.plants.slice(0, 600).map(p => `${p.id} | ${p.name}${p.latin ? ' | ' + p.latin : ''}`).join('\n');
   try {
@@ -1238,7 +1242,7 @@ function openEditor(id, prefill = null, preUploaded = [], opts = {}) {
   openDlg(`<div class="dlg-head"><h2 id="dlgTitle">${orig ? 'עריכת ' + esc(orig.name) : 'צמח חדש'}</h2>${X}</div>
   <form class="dlg-body" id="edForm" novalidate>
     ${sample ? `<div class="smart-box" style="margin:0;flex-wrap:wrap">
-      <div style="flex:1 1 260px;min-width:0"><p><b>מילוי בעזרת Claude.</b> ${orig ? 'Claude יכול להשלים מאפיינים חסרים לפי השם או התמונה.' : 'הכי מהיר: צלמו או בחרו תמונה, ו־Claude יזהה את הצמח וימלא שם מלא, שם לטיני ומאפיינים. אפשר גם לכתוב רק שם וללחוץ "מילוי לפי השם".'}</p>
+      <div style="flex:1 1 260px;min-width:0"><p><b>מילוי בעזרת ${AI}.</b> ${orig ? '' + AI + ' יכול להשלים מאפיינים חסרים לפי השם או התמונה.' : 'הכי מהיר: צלמו או בחרו תמונה, ו־' + AI + ' יזהה את הצמח וימלא שם מלא, שם לטיני ומאפיינים. אפשר גם לכתוב רק שם וללחוץ "מילוי לפי השם".'}</p>
         <div class="checks" style="margin-top:6px"><label><input type="checkbox" id="aiOverwrite">גם לשדות שכבר מולאו</label></div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
         ${canPhotoAI ? `<label class="btn clay" for="quickImg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>${p.images.length ? 'מילוי לפי התמונה' : 'תמונה ומילוי אוטומטי'}</label><input id="quickImg" type="file" accept="image/*" class="sr">` : ''}
@@ -1397,7 +1401,7 @@ function openEditor(id, prefill = null, preUploaded = [], opts = {}) {
     const name = $('#ed-name').value.trim();
     if (!photo && !name) { st.style.color = 'var(--danger)'; st.textContent = 'כתבו שם צמח, או השתמשו בתמונה.'; $('#ed-name').focus(); return; }
     $$('#aiFill, [for="quickImg"]', form).forEach(b => b.setAttribute('aria-disabled', 'true'));
-    st.style.color = ''; st.innerHTML = `<span class="spin" aria-hidden="true"></span> ${photo ? 'Claude מזהה את הצמח בתמונה וממלא מאפיינים…' : 'Claude ממלא מאפיינים…'}`;
+    st.style.color = ''; st.innerHTML = `<span class="spin" aria-hidden="true"></span> ${photo ? '' + AI + ' מזהה את הצמח בתמונה וממלא מאפיינים…' : '' + AI + ' ממלא מאפיינים…'}`;
     const schema = fields.map(f => `- "${f.id}": ${f.label}${f.unit ? ' ביחידות ' + f.unit : ''}; סוג ${f.type}${f.options && f.options.length ? '; ערכים מועדפים: ' + f.options.join(' | ') : ''}`).join('\n');
     const prompt = `אתה אגרונום ומומחה משתלות בישראל. ${photo ? 'זהה את הצמח בתמונה המצורפת' + (name ? ` (המשתמש כתב: "${name}")` : '') : `הצמח: "${name}"${$('#ed-latin').value ? ' (' + $('#ed-latin').value + ')' : ''}`} ומלא את פרטיו לקטלוג משתלה.
 השתמש במינוח ובסגנון של קטלוגי משתלות בישראל כמו משתלת מלצר: שם עברי מלא כולל זן אם ניכר, שם לטיני מדעי, משפחה בפורמט "משפחת X - Latinaceae".
@@ -1412,7 +1416,7 @@ ${schema}
       const full = String(r.fullName || '').trim();
       if (full && !name) { $('#ed-name').value = full; $('#ed-name').classList.add('ai-filled'); n++; }
       else if (full && norm(full) !== norm(name)) {
-        $('#nameSuggest').innerHTML = `<div class="smart-box" style="margin:0"><p>השם המלא לפי Claude: <b>${esc(full)}</b></p><button type="button" class="btn sm" id="useFull">שימוש בשם הזה</button></div>`;
+        $('#nameSuggest').innerHTML = `<div class="smart-box" style="margin:0"><p>השם המלא לפי ${AI}: <b>${esc(full)}</b></p><button type="button" class="btn sm" id="useFull">שימוש בשם הזה</button></div>`;
         $('#useFull').onclick = () => { $('#ed-name').value = full; $('#nameSuggest').innerHTML = ''; refreshLinks(); };
       }
       if (setText('#ed-latin', r.latin, overwrite)) n++;
@@ -1434,7 +1438,7 @@ ${schema}
       syncPr(); renderSz(); refreshLinks(); toggleSeason();
       st.style.color = 'var(--leaf)';
       st.textContent = `${photo && r.confidence ? 'ודאות הזיהוי: ' + r.confidence + '. ' : ''}מולאו ${n} שדות (מסומנים במסגרת). בדקו ותקנו לפני השמירה.`;
-      $('#newValues').innerHTML = unknown.length ? `<div class="smart-box" style="margin:0;flex-direction:column"><p><b>Claude הציע ערכים שאינם ברשימות שלך.</b> סמנו מה להוסיף:</p>
+      $('#newValues').innerHTML = unknown.length ? `<div class="smart-box" style="margin:0;flex-direction:column"><p><b>${AI} הציע ערכים שאינם ברשימות שלך.</b> סמנו מה להוסיף:</p>
         <div class="checks">${unknown.map((u, k) => `<label><input type="checkbox" data-nv="${k}" checked>${esc(u.f.label)}: ${esc(u.x)}</label>`).join('')}</div>
         <div><button type="button" class="btn sm primary" id="nvGo">הוספה לרשימות וסימון</button></div></div>` : '';
       const nv = $('#nvGo'); if (nv) nv.onclick = async () => { nv.disabled = true; for (const b of $$('[data-nv]', form)) if (b.checked) { const u = unknown[+b.dataset.nv]; await addOption(u.f, u.x); } $('#newValues').innerHTML = ''; toast('הערכים נוספו'); };
@@ -1582,7 +1586,7 @@ function clientDetail(c) {
     ${gardenPhotosHtml(c)}
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn primary" id="pickPlants">בחירת צמחים מהקטלוג</button>
-      ${sample ? '<button class="btn clay" id="propBtn">הצעת Claude לגינה</button>' : ''}
+      ${sample && !window.AI_PROVIDER ? '<button class="btn clay" id="propBtn">הצעת ' + AI + ' לגינה</button>' : ''}
       <button class="btn clay" id="presentBtn" ${items.length ? '' : 'disabled'}>מצגת ללקוח</button>
       <button class="btn" id="pdfBtn" ${items.length ? '' : 'disabled'}>הורדת PDF</button>
       <button class="btn" id="copySum" ${items.length ? '' : 'disabled'}>העתקת סיכום</button>
@@ -1967,6 +1971,7 @@ function renderSettings(host) {
       <p class="hint" style="margin:0">כשכבוי, כרטיסי הצמחים ופרטי הצמח מציגים רק מידע על הצמח. המחירים נקבעים ומוצגים במחירון, וברשימות הלקוחות.</p></div>
     ${a11y}
     <div class="panel stack"><h3 style="font-size:1.3rem">גיבוי וייצוא</h3><p class="hint" style="margin:0">קובץ אקסל עם כל הצמחים והמאפיינים, המחירון (קנייה ומחיר ללקוח) ורשימות הלקוחות. כדאי לשמור עותק מדי פעם.</p><div><button class="btn" id="xlsBtn">ייצוא לאקסל</button></div></div>
+    ${aiPanelHtml()}
     ${backupPanelHtml()}
     <div class="panel stack"><h3 style="font-size:1.3rem">עובדים</h3><p class="hint" style="margin:0">${esc(window.APP_TEXT && window.APP_TEXT.workers || 'שתפו את הדף עם העובדים בהרשאת צפייה (Viewer) מתפריט השיתוף. הם יראו רק את קטלוג הצמחים, בלי מחירים, ספקים ולקוחות, ולא יוכלו לשנות דבר.')}</p></div>
     ${S.plants.some(p => p.example) ? `<div class="panel stack"><h3 style="font-size:1.3rem">צמחי הדוגמה</h3><p class="hint" style="margin:0">הקטלוג התחיל עם ${S.plants.filter(p => p.example).length} צמחים לדוגמה (מסומנים "דוגמה") ומחירי דוגמה במחירון. כשתסיימו להתנסות, מחקו אותם ועדכנו את המחירון.</p><div><button class="btn danger" id="delExamples">מחיקת צמחי הדוגמה</button></div></div>` : ''}
@@ -1977,7 +1982,7 @@ function renderSettings(host) {
   $('#showCatPr', host).onchange = e => upsert('settings/prices', {showCatalogPrices: e.target.checked});
   $$('[data-brand]', host).forEach(b => b.onclick = () => { S.biz = {...S.biz, accent: b.dataset.brand}; applyBrand(); upsert('meta/business', {accent: b.dataset.brand}); renderView(true); toast('הצבע עודכן'); });
   $$('input[name="themeSel"]', host).forEach(r => r.onchange = () => { theme = r.value; applyTheme(); });
-  wireBackup(host);
+  wireBackup(host); wireAi(host);
   $('#bz-name', host).onchange = e => upsert('meta/business', {name: e.target.value.trim()});
   $('#bz-phone', host).onchange = e => upsert('meta/business', {phone: e.target.value.trim()});
   const li = $('#logoIn', host);
@@ -2041,12 +2046,12 @@ const fieldSchema = () => S.fields.map(f => `- "${f.id}": ${f.label}${f.unit ? '
 
 /* ---------- bulk add from a list of names ---------- */
 function openBulk() {
-  if (!sample) { toast('הוספת רשימה עם מילוי אוטומטי זמינה כשפותחים את הדף מתוך Claude'); return; }
+  if (!sample) { toast('הוספת רשימה עם מילוי אוטומטי זמינה כשפותחים את הדף מתוך ' + AI + ''); return; }
   let results = []; let abort = null;
   openDlg(`<div class="dlg-head"><h2 id="dlgTitle">הוספת רשימת צמחים</h2>${X}</div>
     <div class="dlg-body">
       <div class="field"><label for="bulkNames">שמות צמחים, שם אחד בכל שורה</label><textarea class="inp" id="bulkNames" style="min-height:180px" placeholder="טבבויה&#10;לבנדר&#10;בוגנוויליה&#10;ציפורנית"></textarea>
-        <span class="hint">Claude ממלא רק מידע שהוא בטוח בו. שדה שהוא לא בטוח בו נשאר ריק, וצמח שלא זוהה בוודאות לא מסומן לשמירה. אפשר להוסיף תמונות אחר כך בעריכת כל צמח.</span></div>
+        <span class="hint">${AI} ממלא רק מידע שהוא בטוח בו. שדה שהוא לא בטוח בו נשאר ריק, וצמח שלא זוהה בוודאות לא מסומן לשמירה. אפשר להוסיף תמונות אחר כך בעריכת כל צמח.</span></div>
       <div><button class="btn primary" id="bulkGo">זיהוי ומילוי</button> <span id="bulkState" class="hint" aria-live="polite"></span></div>
       <div id="bulkOut"></div>
     </div>
@@ -2127,9 +2132,9 @@ function proposalDialog(c) {
   const areas = (c.areas || []).length ? c.areas : [''];
   const sunOpts = ['שמש מלאה', 'הצללה חלקית', 'צל'];
   let abort = null, picks = [];
-  openDlg(`<div class="dlg-head"><h2 id="dlgTitle">הצעת Claude לגינה של ${esc(c.name || 'הלקוח')}</h2>${X}</div>
+  openDlg(`<div class="dlg-head"><h2 id="dlgTitle">הצעת ${AI} לגינה של ${esc(c.name || 'הלקוח')}</h2>${X}</div>
     <div class="dlg-body">
-      <p class="hint" style="margin:0">Claude בוחר רק מתוך הקטלוג שלך, לפי המאפיינים, המחירים והגדלים שהגדרת. אתה מאשר כל צמח לפני שהוא נכנס לרשימה.</p>
+      <p class="hint" style="margin:0">${AI} בוחר רק מתוך הקטלוג שלך, לפי המאפיינים, המחירים והגדלים שהגדרת. אתה מאשר כל צמח לפני שהוא נכנס לרשימה.</p>
       <fieldset><legend>אזורים בגינה</legend><div class="stack" style="gap:10px">
         ${areas.map((a, k) => `<div class="form-grid"><div class="field"><span style="font-weight:700;font-size:.92em">${esc(a || 'הגינה')}</span></div>
           <div class="field"><label for="pa-sun-${k}">אור</label><select class="inp" id="pa-sun-${k}">${sunOpts.map(o => `<option>${o}</option>`).join('')}</select></div>
@@ -2164,7 +2169,7 @@ function proposalDialog(c) {
   };
   $('#prOut').addEventListener('change', e => { const b = e.target.closest('[data-pk]'); if (b) { picks[+b.dataset.pk].sel = b.checked; renderPicks(); } });
   $('#prGo').onclick = async () => {
-    const st = $('#prState'); $('#prGo').disabled = true; st.innerHTML = '<span class="spin" aria-hidden="true"></span> Claude מתכנן את הגינה…';
+    const st = $('#prState'); $('#prGo').disabled = true; st.innerHTML = '<span class="spin" aria-hidden="true"></span> ' + AI + ' מתכנן את הגינה…';
     abort = new AbortController();
     const areaTxt = areas.map((a, k) => `- ${a || 'הגינה'}: ${$('#pa-sun-' + k).value}${$('#pa-size-' + k).value ? ', כ־' + $('#pa-size-' + k).value + ' מ״ר' : ''}`).join('\n');
     const cons = [['#pr-kids', 'בלי צמחים רעילים'], ['#pr-roots', 'בלי שורשים פולשניים'], ['#pr-clean', 'בלי צמחים מלכלכים'], ['#pr-water', 'צריכת מים מועטה'], ['#pr-coast', 'עמיד לקרבת ים']].filter(([s]) => $(s).checked).map(([, t]) => t);
@@ -2531,6 +2536,28 @@ async function importBackup(file, progress) {
   for (const [c, id, doc] of all) { progress(`שומר ${++k} מתוך ${all.length}…`); await w(c + '/' + id, r => r.set(doc)); }
   return all.length;
 }
+/* ---------- smart search through Gemini (standalone app only) ---------- */
+function aiPanelHtml() {
+  if (!window.AI_PROVIDER || !canWrite) return '';
+  const st = window.AI_STATUS || 'off', key = (S.ai && S.ai.siteKey) || '';
+  const msg = st === 'ready' ? '✓ החיפוש החכם פעיל. הוא עובד כשיש אינטרנט; בלי אינטרנט החיפוש הרגיל ממשיך לעבוד.'
+    : key ? 'המפתח נשמר. אם החיפוש החכם עדיין לא פועל, סגרו את האפליקציה ופתחו אותה מחדש.' : 'כבוי. כדי להפעיל, הדביקו כאן את מפתח האתר (Site key) של reCAPTCHA לפי ההוראות.';
+  return `<div class="panel stack"><h3 style="font-size:1.3rem">חיפוש חכם עם ${esc(AI)}</h3>
+    <p class="hint" style="margin:0">חיפוש בשפה חופשית, זיהוי צמח מתמונה ומילוי מאפיינים אוטומטי, דרך המסלול החינמי של Firebase. נשלחים רק שמות הצמחים והמאפיינים שלהם, בלי מחירים, ספקים ולקוחות. יש מכסה יומית חינמית.</p>
+    <p style="margin:0" role="status">${esc(msg)}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end"><div class="field" style="flex:1 1 280px"><label for="aiKey">מפתח האתר של reCAPTCHA (Site key)</label><input class="inp" id="aiKey" dir="ltr" autocomplete="off" spellcheck="false" value="${esc(key)}"></div>
+      <button class="btn primary" id="aiSave">שמירה</button>${sample ? '<button class="btn" id="aiTest">בדיקה</button>' : ''}</div>
+    <p class="hint" id="aiState" aria-live="polite" style="margin:0">${esc(UI.aiMsg || '')}</p></div>`;
+}
+function wireAi(host) {
+  const sv = $('#aiSave', host); if (!sv) return;
+  const say = t => { UI.aiMsg = t; const e = $('#aiState'); if (e) e.textContent = t; };
+  sv.onclick = async () => { const v = $('#aiKey', host).value.trim(); await upsert('meta/ai', {siteKey: v}); S.ai = {...(S.ai || {}), siteKey: v};
+    say(v ? 'נשמר. סגרו את האפליקציה ופתחו אותה מחדש כדי להפעיל.' : 'החיפוש החכם כובה.'); };
+  const t = $('#aiTest', host); if (t) t.onclick = async () => { const st = {set textContent(x) { say(x); }}; st.textContent = 'בודק…';
+    try { const r = await sample.json('החזר JSON בלבד: {"ok":true,"plant":"שם של צמח ים תיכוני אחד בעברית"}'); st.textContent = r && r.ok ? `✓ עובד. דוגמה מהמודל: ${r.plant || ''}` : 'התקבלה תשובה לא צפויה.'; }
+    catch (e) { st.textContent = aiErr(e, 'הבדיקה נכשלה: ' + ((e && e.message) || 'שגיאה לא ידועה')); } };
+}
 function backupPanelHtml() {
   return `<div class="panel stack"><h3 style="font-size:1.3rem">גיבוי מלא</h3>
     <p class="hint" style="margin:0">קובץ אחד עם כל הנתונים (צמחים, מאפיינים, מחירון, לקוחות) וגם התמונות. משמש לגיבוי ולהעברת הקטלוג לאפליקציה אחרת. שחזור מקובץ מוסיף ומעדכן נתונים, ולא מוחק מה שכבר קיים.</p>
@@ -2562,11 +2589,13 @@ show(startView); renderOffline();
   if (user) { try { canWrite = !!(await user.canEdit()); } catch { canWrite = false; } } else canWrite = !!assets;
   if (sample) { try { imgLimits = (await sample.limits()).images || null; } catch { imgLimits = null; } }
   $('#photoBtn').hidden = !imgLimits; $('#smartBtn').hidden = !sample;
+  $('#photoBtn').title = `צלמו או בחרו תמונה של צמח, ו־${AI} יזהה אותו`;
   const sub = (name, post) => db.collection(name).onSnapshot(snap => {
     S[name] = snap.docs.map(d => ({id: d.id, ...d.data()})); if (post) S[name].sort(post); S.ready[name] = true; saveCache(); scheduleRender();
   }, err => console.warn(name, err));
   sub('categories', byOrder); sub('fields', byOrder); sub('sizes', byOrder); sub('plants');
   db.doc('meta/business').onSnapshot(s => { S.biz = s.exists ? s.data() : {}; scheduleRender(); }, () => {});
+  if (window.AI_PROVIDER) db.doc('meta/ai').onSnapshot(s => { S.ai = s.exists ? s.data() : {}; scheduleRender(); }, () => {});
   if (canWrite) {
     sub('clients'); sub('plantPricing');
     db.doc('settings/prices').onSnapshot(s => { S.pricing = s.exists ? s.data() : {}; scheduleRender(); }, () => {});

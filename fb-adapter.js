@@ -7,6 +7,7 @@
   const IMG_COLL = 'images';
   let resolveCaps; const capsP = new Promise(r => { resolveCaps = r; });
   window.claude = {use: async name => (await capsP)[name] ?? null};
+  window.AI_PROVIDER = 'gemini'; window.AI_NAME = 'Gemini'; window.AI_STATUS = 'off';
   window.APP_LIBS = {pdf: ['html2canvas.min.js', 'jspdf.umd.min.js'], xlsx: 'xlsx.full.min.js'};
   window.APP_TEXT = {
     workers: 'לכל עובד פותחים משתמש ב-Firebase (Authentication ← Users ← Add user). מי שאינו ברשימת המנהלים רואה רק את קטלוג הצמחים, בלי מחירים, ספקים ולקוחות, ולא יכול לשנות דבר.',
@@ -221,6 +222,19 @@
     },
   };
 
+  /* ---------- smart features (Gemini through Firebase AI Logic), switched on in the app's settings ---------- */
+  async function loadAi() {
+    try {
+      const snap = await Promise.race([fs.collection('meta').doc('ai').get(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))]);
+      const c = snap.exists ? snap.data() : {};
+      if (!c.siteKey) return null;
+      if (!window.fbAI) await new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'firebase-ai-bundle.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+      const api = window.fbAI.create(cfg, c.siteKey, c.model || cfg.aiModel);
+      window.AI_STATUS = 'ready';
+      return api;
+    } catch (e) { console.warn('smart search not available', e); window.AI_STATUS = 'error'; return null; }
+  }
+
   /* ---------- start the app once signed in ---------- */
   let started = false;
   async function start(user) {
@@ -234,9 +248,10 @@
       canEdit: async () => isAdmin, isOwner: async () => isAdmin, can: async () => isAdmin,
       id: async () => user.uid, me: async () => ({id: user.uid, email: user.email, name: user.displayName || ''}),
     };
+    const sample = await loadAi();
     gate.remove();
     addAccountButton(user.email);
-    resolveCaps({db: dbApi, user: userApi, assets: isAdmin ? assetsApi : null, downloads: downloadsApi});
+    resolveCaps({db: dbApi, user: userApi, assets: isAdmin ? assetsApi : null, downloads: downloadsApi, sample});
   }
   function addAccountButton(email) {
     const grp = document.querySelector('.a11y'); if (!grp) return;
