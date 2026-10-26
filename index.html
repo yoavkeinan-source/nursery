@@ -2080,7 +2080,7 @@ function openQuickPhotos() {
       <button type="button" data-qm="one" aria-pressed="${mode === 'one'}" style="padding:0 14px">צמח אחרי צמח</button></div>`;
   function render() {
     const body = mode === 'many' ? manyHtml() : oneHtml();
-    openDlg(head + `<div class="dlg-body">${tabs()}${body}</div>`, () => rows.forEach(r => URL.revokeObjectURL(r.url)));
+    openDlg(head + `<div class="dlg-body">${tabs()}${body}</div>`, keep => { if (!keep) { rows.forEach(r => URL.revokeObjectURL(r.url)); if (dlg._qoPaste) { document.removeEventListener('paste', dlg._qoPaste); dlg._qoPaste = null; } } });
     $$('[data-qm]', dlg).forEach(b => b.onclick = () => { mode = b.dataset.qm; render(); });
     mode === 'many' ? wireMany() : wireOne();
   }
@@ -2160,6 +2160,10 @@ function openQuickPhotos() {
           <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
             <label class="btn primary" for="qoCam" style="min-height:56px;font-size:1.1em">📷 צילום</label><input type="file" id="qoCam" accept="image/*" capture="environment" class="sr">
             <label class="btn" for="qoGal" style="min-height:56px;font-size:1.1em">🖼 בחירה מהגלריה</label><input type="file" id="qoGal" accept="image/*" multiple class="sr"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+            <a class="btn clay" id="qoGoogle" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&amp;q=${encodeURIComponent([p.name, p.latin].filter(Boolean).join(' '))}">🔍 חיפוש תמונה בגוגל</a>
+            <button type="button" class="btn" id="qoPaste">📋 הדבקת תמונה שהועתקה</button></div>
+          <p class="hint" style="margin:0;max-width:440px">בגוגל: לוחצים על התמונה ← לחיצה ארוכה (בטלפון) או לחצן ימני (במחשב) ← <b>העתקת תמונה</b>, וחוזרים לכאן ל<b>הדבקה</b>. במחשב אפשר גם פשוט ללחוץ Ctrl+V. כדאי לבחור תמונות שמותר להשתמש בהן, או תמונות שלך, לפני שמציגים אותן ללקוחות.</p>
           <div style="display:flex;gap:10px"><button type="button" class="btn ghost" id="qoPrev" ${pos ? '' : 'disabled'}>→ הקודם</button><button type="button" class="btn" id="qoSkip">דילוג ←</button></div>
           <p class="hint" id="qoState" aria-live="polite" style="margin:0">אחרי שהתמונה עולה עוברים אוטומטית לצמח הבא.</p></div>`
         : `<div class="empty"><h3>${onlyNo ? 'לכל הצמחים כאן כבר יש תמונה 🎉' : 'אין צמחים בקטגוריה הזו'}</h3></div>`}`;
@@ -2180,6 +2184,20 @@ function openQuickPhotos() {
       busy = false; render();
     };
     $('#qoCam', dlg).onchange = e => handle(e.target); $('#qoGal', dlg).onchange = e => handle(e.target);
+    const sendFiles = files => handle({files, set value(v) {}});
+    $('#qoPaste', dlg).onclick = async () => {
+      const st = $('#qoState', dlg);
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('no');
+        const items = await navigator.clipboard.read(); const files = [];
+        for (const it of items) { const t = it.types.find(x => x.startsWith('image/')); if (t) { const b = await it.getType(t); files.push(new File([b], 'pasted.' + (t.split('/')[1] || 'png'), {type: t})); } }
+        if (!files.length) { st.textContent = 'בזיכרון אין תמונה. העתיקו תמונה (לחיצה ארוכה ← העתקת תמונה) ונסו שוב.'; return; }
+        sendFiles(files);
+      } catch { st.textContent = 'הדפדפן לא מאפשר הדבקה בלחיצה. במחשב לחצו Ctrl+V; בטלפון שמרו את התמונה ובחרו אותה מהגלריה.'; }
+    };
+    dlg._qoPaste && document.removeEventListener('paste', dlg._qoPaste);
+    dlg._qoPaste = e => { if (!dlg.open || mode !== 'one') return; const files = [...(e.clipboardData && e.clipboardData.files || [])].filter(f => f.type.startsWith('image/')); if (files.length) { e.preventDefault(); sendFiles(files); } };
+    document.addEventListener('paste', dlg._qoPaste);
   }
   render();
 }
