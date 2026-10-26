@@ -460,7 +460,7 @@ function stems(t) {
   const out = new Set([t]);
   let x = t;
   if (x.length >= 4 && /^[והבלמשכ]/.test(x)) { const first = x[0]; x = x.slice(1); out.add(x); if (/[ושכ]/.test(first) && x.length >= 4 && /^[הבלמ]/.test(x)) out.add(x.slice(1)); }
-  [...out].forEach(y => { const m = y.match(/^(.{2,}?)(ות|ים|יות|ה|ת|י)$/); if (m && m[1].length >= 2) out.add(m[1]); });
+  [...out].forEach(y => { const m = y.match(/^(.{2,}?)(ות|ים|יות|ה|ת|י)$/); if (m && m[1].length >= 3) out.add(m[1]); });
   return [...out];
 }
 // the word itself may appear anywhere; a shortened form (without prefix or ending) must start a word, so "מרווה" does not match "גרווליאה"
@@ -720,6 +720,8 @@ function conceptList() {
   add(lw(['אדומים', 'אדומה', 'סגולים', 'סגולה', 'ארגמני', 'ארגמנית', 'בורדו'], ['עלים', 'עלווה'], false).concat(['בורדו']), 'עלווה אדומה-סגולה', p => leafHas(p, 'אדום-סגול', /עלווה (אדומ|סגול|ארגמנ)|ארגמנ|בורדו/), true);
   add(lw(['מגוון', 'מגוונים', 'מגוונת', 'מנומר'], ['עלים', 'עלווה', 'עלה']).concat(['מגוון', 'מגוונים']), 'עלווה מגוונת', p => leafHas(p, 'מגוון', /(^| )[והבלמש]?(מגוונ|מנומר|מוכתמ)/), true);
   add(lw(['זהוב', 'זהובים', 'זהובה', 'צהובים', 'צהובה'], ['עלים', 'עלווה'], false), 'עלווה צהובה-זהובה', p => leafHas(p, 'צהוב-זהוב', /עלווה (צהוב|זהוב)|זהוב/), true);
+  add(['צמחי בית', 'צמח בית', 'צמחי פנים', 'לבית', 'בתוך הבית', 'לתוך הבית', 'לפנים הבית'], 'צמחי בית', p => inCatNamed(p, /בית|פנימ/), true);
+  add(['דקל', 'דקלים', 'דמוי דקל', 'דמויי דקל'], 'דקלים ודמויי דקל', p => attrVals(p, 'lifeForm').some(v => v.includes('דקל')) || inCatNamed(p, /דקל/), true);
   add(['עץ', 'עצים'], 'עץ', p => attrVals(p, 'lifeForm').some(v => v.includes('עץ')) || inCatNamed(p, /^עצ/), true);
   add(['שיח', 'שיחים'], 'שיח', p => attrVals(p, 'lifeForm').some(v => v.includes('שיח')) || inCatNamed(p, /שיח/), true);
   add(['מטפס', 'מטפסים'], 'מטפס', p => attrVals(p, 'lifeForm').some(v => v.includes('מטפס')) || inCatNamed(p, /מטפס/), true);
@@ -1035,8 +1037,9 @@ ${catalogRows(canWrite && !window.AI_PROVIDER)}
 function aiErr(e, fallback) {
   if (e && e.code === 'not_granted') return 'הפעולה דורשת אישור להשתמש ב־' + AI + '. אפשר לאשר בפעם הבאה שתלחצו.';
   if (e && e.code === 'offline') return 'אין חיבור לאינטרנט כרגע. החיפוש הרגיל עדיין עובד: כתבו בתיבה, למשל "שיח אפור חסכוני במים".';
+  if (e && e.code === 'busy') return 'השרת של ' + AI + ' עמוס כרגע. נסו שוב בעוד דקה; בינתיים החיפוש הרגיל עובד. פרטים טכניים: ' + String(e.message || '').slice(0, 200);
   if (e && e.code === 'quota') return 'נגמרה המכסה החינמית להיום. מחר זה יעבוד שוב; עד אז החיפוש הרגיל עובד כרגיל.';
-  if (e && e.code === 'not_ready') return 'החיפוש החכם עוד לא הופעל עד הסוף ב־Firebase. בדקו את שלבי ההפעלה בהגדרות.';
+  if (e && e.code === 'not_ready') return 'החיפוש החכם עוד לא הופעל עד הסוף ב־Firebase. פרטים טכניים: ' + String(e.message || '').slice(0, 300);
   if (e && e.code === 'rate_limited') return 'יותר מדי בקשות ברגע זה. נסו שוב בעוד דקה.';
   if (e && (e.code === 'image_rejected' || e.code === 'images_unavailable')) return 'לא ניתן לשלוח את התמונה הזו. נסו תמונה אחרת בפורמט JPG או PNG.';
   return fallback;
@@ -2515,10 +2518,24 @@ async function importBackup(file, progress) {
         const cur = plantById(id); if (!cur) continue;
         const attrs = {...(cur.attrs || {})}; let changed = false;
         for (const [key, v] of Object.entries(d.attrs || {})) { const old = attrs[key]; if (old == null || old === '' || (Array.isArray(old) && !old.length)) { attrs[key] = v; changed = true; } }
+        // replace a value only while it is still the one the earlier import put there (so your own edits are kept)
+        for (const [key, ch] of Object.entries(d.replaceAttrs || {})) { if (JSON.stringify(attrs[key]) === JSON.stringify(ch.from)) { attrs[key] = ch.to; changed = true; } }
+        const cats = [...(cur.categoryIds || [])]; for (const cid of (d.addCats || [])) if (!cats.includes(cid)) { cats.push(cid); changed = true; }
+        const others = String(cur.otherNames || '').split(',').map(x => x.trim()).filter(Boolean);
+        for (const o of (d.addOtherNames || [])) if (!others.includes(o) && o !== cur.name) { others.push(o); changed = true; }
+        const vars = [...(cur.varieties || [])]; for (const v of (d.addVarieties || [])) if (!vars.some(x => x.name === v)) { vars.push({name: v, desc: ''}); changed = true; }
+        const patch = {attrs, categoryIds: cats, otherNames: others.join(', '), varieties: vars, updatedAt: Date.now()};
+        if (d.latin && !cur.latin) { patch.latin = d.latin; changed = true; }
+        if (d.notes && !cur.notes) { patch.notes = d.notes; changed = true; }
         if (!changed) continue;
-        await w('plants/' + id, r => r.update({attrs, updatedAt: Date.now()})); n++;
+        await w('plants/' + id, r => r.update(patch)); n++;
       } else {
-        const exists = (S[c] || []).some(x => x.id === id); if (exists) continue;
+        const cur = (S[c] || []).find(x => x.id === id);
+        if (cur) {
+          // existing attribute: only add missing list options
+          if (c === 'fields' && Array.isArray(d.options)) { const add = d.options.filter(o => !(cur.options || []).includes(o)); if (add.length) { await w('fields/' + id, r => r.update({options: [...(cur.options || []), ...add]})); n++; } }
+          continue;
+        }
         await w(c + '/' + id, r => r.set(d)); n++;
       }
     }
