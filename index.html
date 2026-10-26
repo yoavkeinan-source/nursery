@@ -346,6 +346,9 @@ label.ai-filled{background:var(--clay-soft)!important}
 .gphotos .gp .x{position:absolute;top:3px;inset-inline-end:3px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;cursor:pointer}
 .gp-add{width:84px;height:84px;border-radius:10px;border:2px dashed var(--line);display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;font-size:.8rem;font-weight:700;color:var(--ink-2);text-align:center}
 .pdf-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.q-hint{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px}
+.chip.sm{min-height:32px;padding:3px 10px;font-size:.88em}
+.chip.sm[aria-pressed="false"]{text-decoration:line-through;opacity:.6}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
@@ -378,7 +381,7 @@ label.ai-filled{background:var(--clay-soft)!important}
     <form class="search-bar" id="searchForm" role="search">
       <div class="search-box">
         <label for="q" class="sr">חיפוש צמח</label>
-        <input id="q" type="search" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="acList" placeholder="חיפוש: שם, שם לטיני, זן, צבע פריחה…">
+        <input id="q" type="search" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="acList" placeholder="חיפוש: שם, או למשל: חסכוני במים עד 3 מטר">
         <ul id="acList" role="listbox" aria-label="הצעות" hidden></ul>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
       </div>
@@ -393,6 +396,7 @@ label.ai-filled{background:var(--clay-soft)!important}
     <div id="clientBanner"></div>
     <div class="chips" id="catChips" role="group" aria-label="סינון לפי קטגוריה"></div>
     <details class="filters" id="filtersBox"><summary>סינון לפי מאפיינים</summary><div class="filter-grid" id="filterGrid"></div></details>
+    <div id="qHint" aria-live="polite"></div>
     <div class="toolbar">
       <span class="count" id="count" aria-live="polite"></span>
       <label for="sort" class="muted">מיון</label>
@@ -453,7 +457,7 @@ const FIN = {'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ'};
 function stems(t) {
   const out = new Set([t]);
   let x = t;
-  if (x.length >= 4 && /^[והבלמשכ]/.test(x)) { x = x.slice(1); out.add(x); if (x.length >= 4 && /^[הבלמ]/.test(x)) out.add(x.slice(1)); }
+  if (x.length >= 4 && /^[והבלמשכ]/.test(x)) { const first = x[0]; x = x.slice(1); out.add(x); if (/[ושכ]/.test(first) && x.length >= 4 && /^[הבלמ]/.test(x)) out.add(x.slice(1)); }
   [...out].forEach(y => { const m = y.match(/^(.{2,}?)(ות|ים|יות|ה|ת|י)$/); if (m && m[1].length >= 2) out.add(m[1]); });
   return [...out];
 }
@@ -658,6 +662,149 @@ function renderLetters() {
   if (present.length < 2 || UI.smart) { el.innerHTML = ''; if (UI.letter && !present.includes(UI.letter)) UI.letter = ''; return; }
   el.innerHTML = `<button data-letter="" aria-pressed="${!UI.letter}">הכל</button>` + present.map(l => `<button data-letter="${esc(l)}" aria-pressed="${UI.letter === l}" aria-label="צמחים באות ${esc(l)}">${esc(l)}</button>`).join('');
 }
+/* ---------- understanding a search in plain Hebrew (works without internet or AI) ----------
+   "עצים פורחים בצהוב עד 4 מטר", "חסכוני במים לצל", "רוחב נוף מעל 5", "לא רעיל לילדים"
+   Each recognised phrase becomes a condition; whatever is left is searched as normal text. */
+const fieldById = id => S.fields.find(f => f.id === id);
+const attrVals = (p, fid) => { const v = p.attrs && p.attrs[fid]; return v == null || v === '' ? [] : (Array.isArray(v) ? v : [v]).map(String); };
+const NEG = new Set(['לא', 'בלי', 'ללא', 'אינו', 'שאינו', 'שלא', 'אין']);
+const STOP = new Set(['של', 'עם', 'את', 'כל', 'לי', 'רוצה', 'מחפש', 'מחפשת', 'צריכ', 'צריכה', 'שהוא', 'שהיא', 'שיהיה', 'שיהיו', 'גם', 'או', 'ו', 'ש', 'ה', 'ב', 'ל', 'מ', 'על', 'יותר', 'פחות', 'צמח', 'צמחימ', 'משהו', 'מתאימ', 'מתאימה', 'מתאימימ', 'הכי', 'טוב', 'טובימ', 'ממש', 'קצת', 'כמו', 'מקומ', 'למקומ', 'גינה', 'לגינה', 'בגינה', 'מטר', 'מטרימ', 'מ']);
+const SUFFIX = new Set(['', 'ה', 'ת', 'י', 'ימ', 'ות', 'ית', 'יות', 'יימ', 'יה']);
+function tokMatch(q, o) {
+  if (!q || !o) return false;
+  const vs = new Set([q, ...stems(q)]);
+  for (const v of vs) {
+    if (v === o) return true;
+    if (o.length >= 2 && v.startsWith(o) && SUFFIX.has(v.slice(o.length))) return true;
+    if (v.length >= 2 && o.startsWith(v) && SUFFIX.has(o.slice(v.length))) return true;
+  }
+  return false;
+}
+/* concepts: everyday words mapped to the catalogue's attributes */
+function conceptList() {
+  const has = id => !!fieldById(id);
+  const out = [];
+  const add = (trig, label, test, ok = true) => { if (ok) out.push({trig: trig.map(t => norm(t).split(' ')), label, test}); };
+  add(['חסכוני במים', 'חסכוניים במים', 'חסכונית במים', 'חסכוני', 'חסכוניים', 'מעט מים', 'עמיד ליובש', 'עמידים ליובש', 'צריכת מים מועטה', 'צריכה נמוכה'], 'חסכוני במים',
+    p => attrVals(p, 'water').some(v => v.includes('מועט')) || attrVals(p, 'uses').some(v => v.includes('חסכונ')), has('water') || has('uses'));
+  add(['הרבה מים', 'צריכת מים מרובה'], 'צריכת מים מרובה', p => attrVals(p, 'water').some(v => v.includes('מרוב')), has('water'));
+  add(['חצי צל', 'הצללה חלקית'], 'חצי צל', p => attrVals(p, 'sun').some(v => v.includes('הצללה') || v === 'צל'), has('sun'));
+  add(['צל', 'לצל', 'צללים', 'מוצל', 'מקום מוצל'], 'מתאים לצל', p => attrVals(p, 'sun').some(v => v === 'צל' || v.includes('הצללה')), has('sun'));
+  add(['שמש', 'שמש מלאה', 'שמשי', 'מקום שמשי'], 'שמש מלאה', p => attrVals(p, 'sun').some(v => v.includes('שמש')), has('sun'));
+  add(['ירוק עד', 'ירוקי עד', 'לא נשיר', 'לא נשירים', 'לא משיר'], 'ירוק-עד', p => attrVals(p, 'foliage').some(v => v.includes('ירוק')), has('foliage'));
+  add(['נשיר', 'נשירים', 'נשירה'], 'נשיר', p => attrVals(p, 'foliage').some(v => v.startsWith('נשיר')), has('foliage'));
+  add(['לא רעיל', 'לא רעילים', 'בטוח לילדים', 'לילדים', 'לכלבים', 'לחתולים', 'לבעלי חיים', 'בטוח'], 'לא רעיל', p => !attrVals(p, 'toxic').length, has('toxic'));
+  add(['לא מלכלך', 'לא מלכלכים', 'נקי', 'נקיים'], 'לא מלכלך', p => !attrVals(p, 'messy').length, has('messy'));
+  add(['ליד הבית', 'ליד בריכה', 'ליד הבריכה', 'ליד צנרת', 'לא פולשני', 'בלי שורשים'], 'בלי שורשים פולשניים', p => !attrVals(p, 'roots').length, has('roots'));
+  add(['חוף', 'לחוף', 'ליד הים', 'קרוב לים', 'קו חוף', 'ים'], 'מתאים לחוף', p => attrVals(p, 'coast').some(v => !v.startsWith('לא')), has('coast'));
+  add(['עציץ', 'לעציץ', 'עציצים', 'מיכל', 'למיכל', 'אדנית', 'מרפסת', 'למרפסת'], 'מתאים למיכל או מרפסת', p => attrVals(p, 'pot').length > 0 || attrVals(p, 'uses').some(v => v.includes('מרפסת') || v.includes('מיכל')), has('pot') || has('uses'));
+  add(['פרפרים', 'דבורים', 'מאביקים', 'מושך פרפרים', 'מושך דבורים'], 'מושך פרפרים ודבורים', p => attrVals(p, 'pollinators').length > 0 || attrVals(p, 'uses').some(v => v.includes('פרפר')), has('pollinators') || has('uses'));
+  add(['גדל מהר', 'מהיר', 'מהירי צימוח', 'צומח מהר'], 'צימוח מהיר', p => attrVals(p, 'growth').some(v => v.includes('מהיר')), has('growth'));
+  add(['איטי', 'גדל לאט'], 'צימוח איטי', p => attrVals(p, 'growth').some(v => v.includes('איטי')), has('growth'));
+  add(['עמיד לקור', 'עמיד לקרה', 'קור', 'קרה', 'ירושלים', 'הרים', 'גליל'], 'עמיד לקור', p => attrVals(p, 'frost').some(v => v.includes('עמיד')), has('frost'));
+  add(['ריחני', 'ריחניים', 'ריח'], 'ריחני', p => norm([attrVals(p, 'unique').join(' '), p.notes].join(' ')).includes('ריח'), true);
+  const inCatNamed = (p, re) => (p.categoryIds || []).some(id => catChain(id).some(c => re.test(norm(c.name))));
+  add(['תבלין', 'תבלינים', 'צמח תבלין', 'צמחי תבלין'], 'צמחי תבלין', p => attrVals(p, 'uses').some(v => v.includes('תבלין')) || inCatNamed(p, /תבלינ/), true);
+  add(['מאכל', 'אכיל', 'פרי אכיל', 'עץ פרי', 'עצי פרי', 'פירות'], 'פרי אכיל', p => attrVals(p, 'uses').some(v => v.includes('מאכל')) || inCatNamed(p, /פרי/) || norm(attrVals(p, 'unique').join(' ')).includes('אכיל'), true);
+  add(['פורח', 'פורחים', 'פורחת', 'פרחים', 'פרח', 'פריחה'], 'פורח', p => attrVals(p, 'bloomColor').length > 0 || inCatNamed(p, /פורח/), true);
+  add(['עץ', 'עצים'], 'עץ', p => attrVals(p, 'lifeForm').some(v => v.includes('עץ')) || inCatNamed(p, /^עצ/), true);
+  add(['שיח', 'שיחים'], 'שיח', p => attrVals(p, 'lifeForm').some(v => v.includes('שיח')) || inCatNamed(p, /שיח/), true);
+  add(['מטפס', 'מטפסים'], 'מטפס', p => attrVals(p, 'lifeForm').some(v => v.includes('מטפס')) || inCatNamed(p, /מטפס/), true);
+  return out;
+}
+/* size words without a number */
+const SIZE_WORDS = [
+  {trig: ['נמוך', 'נמוכים', 'נמוכה', 'קטן', 'קטנים', 'קטנה', 'ננסי'], field: 'h', min: null, max: 1.2, label: 'נמוך (עד 1.2 מ׳)'},
+  {trig: ['גבוה', 'גבוהים', 'גבוהה', 'גדול', 'גדולים'], field: 'h', min: 4, max: null, label: 'גבוה (מ־4 מ׳)'},
+  {trig: ['רחב', 'רחבים', 'נוף רחב', 'מצל', 'נותן צל'], field: 'w', min: 5, max: null, label: 'נוף רחב (מ־5 מ׳)'},
+  {trig: ['צר', 'צרים', 'צרה', 'זקוף'], field: 'w', min: null, max: 2, label: 'נוף צר (עד 2 מ׳)'},
+];
+function numberFields() {
+  const nf = S.fields.filter(f => f.type === 'number');
+  const h = nf.find(f => f.id === 'height') || nf.find(f => norm(f.label).includes('גובה')) || nf[0];
+  const w = nf.find(f => f.id === 'spread') || nf.find(f => /רוחב|נופ/.test(norm(f.label)));
+  return {nf, h, w};
+}
+function parseQuery(raw) {
+  const res = {conds: [], rest: ''};
+  if (!raw || !raw.trim()) return res;
+  // keep decimals and ranges before normalising
+  let t = String(raw).replace(/(\d)[.,](\d)/g, '$1٫$2').replace(/(\d)\s*[-–]\s*(\d)/g, '$1 עד $2').replace(/ס\s?[״"']?\s?מ(?=\s|$)/g, ' סנטימטר ').replace(/(\d)(סנטימטר)/g, '$1 $2').replace(/(\d)\s*מ['׳]?(?=\s|$)/g, '$1 מטר');
+  const toks = norm(t).replace(/٫/g, '.').split(' ').filter(Boolean);
+  const used = new Array(toks.length).fill(false);
+  const {nf, h, w} = numberFields();
+  const isNum = x => /^(?:[למ]|עד)?\d+(?:\.\d+)?(?:מ|מטר)?$/.test(x);
+  const numOf = x => parseFloat(x.replace(/^(?:[למ]|עד)/, ''));
+  // 1) numbers: "עד 3", "מעל 5", "בין 2 ל 4", "גובה 3 מטר", "רוחב נוף 6"
+  for (let i = 0; i < toks.length; i++) {
+    if (used[i] || !isNum(toks[i])) continue;
+    let lo = null, hi = null, j = i, startIdx = i;
+    const prev = toks[i - 1] || '', prev2 = toks[i - 2] || '';
+    const v1 = numOf(toks[i]);
+    const nxt = toks[i + 1] || '', nxt2 = toks[i + 2] || '';
+    if (prev === 'בינ' && (['ו', 'ל', 'עד'].includes(nxt) && isNum(nxt2) || /^[ול]\d/.test(nxt))) { const v2 = /^[ול]\d/.test(nxt) ? numOf(nxt.slice(1)) : numOf(nxt2); lo = Math.min(v1, v2); hi = Math.max(v1, v2); j = /^[ול]\d/.test(nxt) ? i + 1 : i + 2; startIdx = i - 1; }
+    else if (nxt === 'עד' && isNum(nxt2)) { const v2 = numOf(nxt2); lo = Math.min(v1, v2); hi = Math.max(v1, v2); j = i + 2; }
+    else if (/^עד\d/.test(toks[i]) || ['עד', 'מתחת', 'פחות', 'מקסימומ', 'מקסימום', 'לכל'].includes(prev) || (prev === 'ל' && prev2 === 'מתחת')) { hi = v1; if (['עד', 'מתחת', 'פחות', 'מקסימומ', 'מקסימום'].includes(prev)) startIdx = i - 1; if (prev === 'ל' && prev2 === 'מתחת') startIdx = i - 2; if (prev2 === 'לכל' && prev === 'היותר') startIdx = i - 2; }
+    else if (['מעל', 'לפחות', 'מינימומ', 'מינימום', 'יותר', 'מ'].includes(prev) || (prev === 'מ' && prev2 === 'יותר')) { lo = v1; startIdx = prev2 === 'יותר' && prev === 'מ' ? i - 2 : i - 1; }
+    else { lo = +(v1 * 0.75).toFixed(2); hi = +(v1 * 1.25).toFixed(2); }
+    let k = j + 1, cm = false;
+    if (['מטר', 'מטרימ', 'מ'].includes(toks[k])) k++;
+    else if (['סנטימטר', 'סמ'].includes(toks[k])) { cm = true; k++; }
+    // which field: look at the words just before
+    let field = null;
+    for (let b = startIdx - 1; b >= Math.max(0, startIdx - 4) && !field; b--) {
+      for (const f of nf) { const keys = norm(f.label).split(' ').filter(x => x.length >= 3).concat(f === w ? ['רוחב', 'נופ', 'קוטר'] : []);
+        if (keys.some(kk => tokMatch(toks[b], kk))) { field = f; let st = b; while (st > 0 && keys.some(kk => tokMatch(toks[st - 1], kk))) st--; for (let z = st; z < startIdx; z++) used[z] = true; break; } }
+    }
+    field = field || h; if (!field) continue;
+    const scale = cm && /מ/.test(field.unit || 'מ') && !/ס/.test(field.unit || '') ? 0.01 : 1;
+    if (lo != null) lo = +(lo * scale).toFixed(3); if (hi != null) hi = +(hi * scale).toFixed(3);
+    for (let z = Math.max(0, startIdx); z < k && z < toks.length; z++) used[z] = true;
+    const u = field.unit ? ' ' + field.unit : '';
+    const label = `${field.label}: ${lo != null && hi != null ? (hi - lo < 1e-9 ? lo : lo + '–' + hi) : lo != null ? 'מ־' + lo : 'עד ' + hi}${u}`;
+    res.conds.push({key: 'n:' + field.id + ':' + lo + ':' + hi, label, test: p => { const v = num(p.attrs && p.attrs[field.id]); return v != null && (lo == null || v >= lo) && (hi == null || v <= hi); }});
+  }
+  // 2) phrases: categories, list values, concepts, size words, yes/no attributes — longest first
+  const phrases = [];
+  S.categories.forEach(c => phrases.push({toks: norm(c.name).split(' '), key: 'c:' + c.id, label: catPath(c.id), test: p => plantInCat(p, c.id)}));
+  S.fields.filter(f => f.type === 'select' || f.type === 'multi').forEach(f => (f.options || []).forEach(o => { const ot = norm(o).split(' ').filter(Boolean); if (ot.length && ot.join('').length >= 2) phrases.push({toks: ot, key: 'o:' + f.id + ':' + o, label: f.label + ': ' + o, test: p => attrVals(p, f.id).includes(o)}); }));
+  conceptList().forEach(cn => cn.trig.forEach(tt => phrases.push({toks: tt, key: 'k:' + cn.label, label: cn.label, test: cn.test})));
+  SIZE_WORDS.forEach(sw => { const f = sw.field === 'h' ? h : w; if (!f) return; sw.trig.forEach(tt => phrases.push({toks: norm(tt).split(' '), key: 's:' + sw.label, label: sw.label, test: p => { const v = num(p.attrs && p.attrs[f.id]); return v != null && (sw.min == null || v >= sw.min) && (sw.max == null || v <= sw.max); }})); });
+  S.fields.filter(f => f.type === 'bool').forEach(f => { const keys = norm(f.label).split(' ').filter(x => x.length >= 4 && !['לילדימ', 'ובעלי', 'חיימ', 'ודבורימ', 'פרחימ'].includes(x)); if (keys[0]) phrases.push({toks: [keys[0]], key: 'b:' + f.id, label: f.label, bool: f.id, test: p => attrVals(p, f.id).length > 0}); });
+  phrases.sort((a, b) => b.toks.length - a.toks.length);
+  for (let i = 0; i < toks.length; i++) {
+    if (used[i]) continue;
+    let best = null, maxN = Infinity;
+    for (let tries = 0; tries < 4; tries++) {
+      best = null;
+      for (const ph of phrases) {
+        const n = ph.toks.length; if (n >= maxN || i + n > toks.length) continue;
+        if (best && n < best.n) break;
+        let ok = true; for (let z = 0; z < n; z++) if (used[i + z] || !tokMatch(toks[i + z], ph.toks[z])) { ok = false; break; }
+        if (!ok) continue;
+        if (!best) best = {n, alts: [ph]}; else if (n === best.n && !best.alts.some(a => a.key === ph.key)) best.alts.push(ph);
+      }
+      // a long phrase that no plant has (e.g. "שיח נמוך") is retried as shorter pieces ("שיח" + "נמוך")
+      if (best && best.n > 1 && !best.alts.some(a => a.key.startsWith('k:') || a.key.startsWith('c:')) && !S.plants.some(p => best.alts.some(a => a.test(p)))) { maxN = best.n; continue; }
+      break;
+    }
+    if (!best) continue;
+    const neg = i > 0 && NEG.has(toks[i - 1]) && !used[i - 1];
+    for (let z = 0; z < best.n; z++) used[i + z] = true;
+    if (neg) used[i - 1] = true;
+    const conceptFirst = best.alts.find(a => a.key.startsWith('k:'));
+    const alts = conceptFirst ? [conceptFirst] : best.alts;
+    const uniq = [...new Map(alts.map(a => [a.label, a])).values()];
+    if (neg) res.conds.push({key: 'not:' + uniq.map(a => a.key).join('|'), label: 'בלי: ' + uniq.map(a => a.label).join(' / '), test: p => !uniq.some(a => a.test(p))});
+    else res.conds.push({key: uniq.map(a => a.key).join('|'), label: uniq.map(a => a.label).join(' או '), test: p => uniq.some(a => a.test(p))});
+    i += best.n - 1;
+  }
+  // concept phrases that already start with "לא" (e.g. "לא רעיל") are matched as a whole above; drop duplicates
+  const seen = new Set(); res.conds = res.conds.filter(c => !seen.has(c.label) && seen.add(c.label));
+  res.rest = toks.filter((x, i) => !used[i] && !STOP.has(x)).join(' ');
+  return res;
+}
+
 function filtered() {
   let list = S.plants.slice();
   if (UI.smart && UI.smart.ids) { const set = new Map(UI.smart.ids.map((id, i) => [id, i])); list = list.filter(p => set.has(p.id)).sort((a, b) => set.get(a.id) - set.get(b.id)); }
@@ -677,7 +824,23 @@ function filtered() {
       if (f.type === 'bool') return val === 'yes' ? !!v : !v;
       return Array.isArray(v) ? v.includes(val) : v === val; });
   }
-  const q = norm(UI.q); let fuzzy = false;
+  let q = norm(UI.q); let fuzzy = false;
+  UI.parsed = null;
+  if (q && !UI.smart) {
+    const pq = parseQuery(UI.q);
+    const conds = pq.conds.filter(c => !(UI.qOff || new Set()).has(c.key));
+    if (pq.conds.length) {
+      const narrowed = list.filter(p => conds.every(c => c.test(p)));
+      const textOnly = norm(pq.rest);
+      // if the words were really a plant name, fall back to a plain name search
+      const nameHit = S.plants.some(p => norm([p.name, p.latin, p.otherNames].join(' ')).includes(q));
+      if (!(nameHit && !narrowed.some(p => norm([p.name, p.latin, p.otherNames].join(' ')).includes(q)))) {
+        UI.parsed = {conds: pq.conds, rest: pq.rest};
+        list = narrowed; q = textOnly;
+        if (!q) { list.sort((a, b) => String(a.name).localeCompare(String(b.name), 'he')); if (UI.sort !== 'name') q = ''; else return {list, fuzzy}; }
+      }
+    }
+  }
   if (q && !UI.smart) {
     const toks = q.split(' ');
     const scored = list.map(p => { const h = haystack(p); const nm = norm(p.name);
@@ -738,6 +901,8 @@ function renderResults() {
   if (!S.ready.plants) { el.innerHTML = `<div class="empty"><span class="spin" aria-hidden="true"></span><p>טוען את הקטלוג…</p></div>`; return; }
   if (!S.plants.length) { el.innerHTML = `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21V11M12 13c-5 0-7-3-7-8 5 0 7 3 7 8zM12 11c0-4 2-7 7-7 0 5-2 7-7 7z"/></svg><h3>הקטלוג עדיין ריק</h3><p class="muted">הוסיפו את הצמח הראשון: שם, קטגוריה, מאפיינים ותמונות.</p>${canWrite ? '<button class="btn primary" data-act="new">הוספת צמח ראשון</button>' : ''}</div>`; $('#count').textContent = ''; return; }
   const {list, fuzzy} = filtered();
+  const qh = $('#qHint'); const off = UI.qOff || new Set();
+  qh.innerHTML = UI.parsed ? `<div class="q-hint"><span class="muted">הבנתי מהחיפוש:</span>${UI.parsed.conds.map(c => `<button class="chip sm" data-qoff="${esc(c.key)}" aria-pressed="${!off.has(c.key)}" title="${off.has(c.key) ? 'לחצו להחזרה' : 'לחצו לביטול התנאי'}">${off.has(c.key) ? '' : '✓ '}${esc(c.label)}</button>`).join('')}${UI.parsed.rest ? `<span class="muted">+ טקסט: "${esc(UI.parsed.rest)}"</span>` : ''}</div>` : '';
   $('#count').textContent = `${list.length} צמחים` + (fuzzy ? ' · תוצאות קרובות לחיפוש' : '');
   if (!list.length) {
     const q = UI.q.trim();
@@ -766,7 +931,8 @@ function renderResults() {
   }).join('')}</div>`;
 }
 
-$('#q').addEventListener('input', e => { UI.q = e.target.value; if (UI.smart) { UI.smart = null; $('#smartOut').innerHTML = ''; } renderResults(); });
+$('#qHint').onclick = e => { const b = e.target.closest('[data-qoff]'); if (!b) return; UI.qOff = UI.qOff || new Set(); const k = b.dataset.qoff; UI.qOff.has(k) ? UI.qOff.delete(k) : UI.qOff.add(k); renderResults(); };
+$('#q').addEventListener('input', e => { UI.qOff = new Set(); UI.q = e.target.value; if (UI.smart) { UI.smart = null; $('#smartOut').innerHTML = ''; } renderResults(); });
 $('#searchForm').addEventListener('submit', e => e.preventDefault());
 $('#sort').onchange = e => { UI.sort = e.target.value; renderResults(); };
 $('#vGrid').onclick = () => { UI.layout = 'grid'; ls.set('layout', 'grid'); renderResults(); };
