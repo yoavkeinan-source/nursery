@@ -349,6 +349,21 @@ label.ai-filled{background:var(--clay-soft)!important}
 .q-hint{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px}
 .chip.sm{min-height:32px;padding:3px 10px;font-size:.88em}
 .chip.sm[aria-pressed="false"]{text-decoration:line-through;opacity:.6}
+.fold-title{cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none}
+.fold-title::after{content:"▾";font-family:var(--f-body);font-size:.8em;color:var(--ink-2);transition:transform .15s;margin-inline-start:auto}
+.panel.folded .fold-title::after{transform:rotate(90deg)}
+.panel.folded{padding-block:12px}
+.panel.folded > :not(.fold-head), .panel.folded .fold-head > :not(.fold-title){display:none!important}
+.sel-btn{position:absolute;top:8px;inset-inline-start:8px;z-index:3;width:38px;height:38px;border-radius:10px;border:2.5px solid #fff;background:rgba(0,0,0,.35);color:#fff;font-size:1.3rem;font-weight:800;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.sel-btn[aria-pressed="true"]{background:var(--leaf);border-color:var(--leaf)}
+.card.picked{outline:3px solid var(--leaf);outline-offset:-3px}
+.sel-bar{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:15;margin-top:14px;background:var(--surface);border:2px solid var(--leaf);border-radius:14px;padding:10px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.sel-bar b{margin-inline-end:auto}
+@media (max-width:760px){.sel-bar{bottom:calc(78px + env(safe-area-inset-bottom,0px))}}
+.pick-img{all:unset;cursor:pointer;width:72px;height:72px;border-radius:8px;overflow:hidden;border:3px solid transparent;opacity:.55}
+.pick-img[aria-pressed="true"]{border-color:var(--leaf);opacity:1}
+.pick-img img{width:100%;height:100%;object-fit:cover;display:block}
+.pick-img:focus-visible{outline:3px solid var(--focus)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
@@ -400,6 +415,7 @@ label.ai-filled{background:var(--clay-soft)!important}
     <div id="qHint" aria-live="polite"></div>
     <div class="toolbar">
       <span class="count" id="count" aria-live="polite"></span>
+      <button type="button" class="btn sm" id="selBtn" aria-pressed="false" title="סימון צמחים ויצירת קובץ PDF מסודר עם תמונות">☑ בחירה ל־PDF</button>
       <label for="sort" class="muted">מיון</label>
       <div class="view-toggle" role="group" aria-label="תצוגה">
         <button type="button" id="vGrid" aria-label="תצוגת כרטיסים" title="כרטיסים"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></button>
@@ -414,6 +430,7 @@ label.ai-filled{background:var(--clay-soft)!important}
     </div>
     <div id="letters" class="letters" role="group" aria-label="סינון לפי אות"></div>
     <div id="results"></div>
+    <div id="selBar"></div>
   </section>
 
   <!-- CLIENTS -->
@@ -477,7 +494,7 @@ function lev1(a, b) {
 
 /* ---------- state ---------- */
 const S = { categories: [], fields: [], sizes: [], pricing: {}, plantPricing: [], plants: [], clients: [], biz: {}, ready: {}, noDb: false };
-const UI = { layout: ls.get('layout', 'grid'), favOnly: false, ranges: {}, clientQ: '', clientOrder: ls.get('clientOrder', 'time'), slide: 0, slideImg: 0, overview: false, view: 'catalog', q: '', cat: 'all', filters: {}, sort: 'name', smart: null, activeClient: ls.get('activeClient', null), lastArea: ls.get('lastArea', ''), present: false, showPrices: true };
+const UI = { selMode: false, sel: new Set(ls.get('pdfSel', [])), layout: ls.get('layout', 'grid'), favOnly: false, ranges: {}, clientQ: '', clientOrder: ls.get('clientOrder', 'time'), slide: 0, slideImg: 0, overview: false, view: 'catalog', q: '', cat: 'all', filters: {}, sort: 'name', smart: null, activeClient: ls.get('activeClient', null), lastArea: ls.get('lastArea', ''), present: false, showPrices: true };
 let db = null, assets = null, sample = null, user = null, downloads = null, canWrite = false, imgLimits = null;
 
 /* ---------- accessibility prefs ---------- */
@@ -931,10 +948,12 @@ function renderResults() {
   }
   const cl = canWrite && S.clients.find(c => c.id === UI.activeClient);
   $('#vGrid').setAttribute('aria-pressed', String(UI.layout !== 'list')); $('#vList').setAttribute('aria-pressed', String(UI.layout === 'list'));
+  UI.lastList = list; renderSelBar();
   el.innerHTML = `<div class="grid${UI.layout === 'list' ? ' list' : ''}">${list.map(p => {
     const imgs = p.images || []; const mp = showCatPrices() ? minPrice(p) : null;
-    return `<article class="card">
-      ${cl ? `<button class="btn sm primary quick-add" data-quick="${esc(p.id)}" aria-label="הוספת ${esc(p.name)} לרשימה של ${esc(cl.name)}">+ ללקוח</button>` : ''}
+    return `<article class="card${UI.selMode && UI.sel.has(p.id) ? ' picked' : ''}">
+      ${UI.selMode ? `<button class="sel-btn" data-sel="${esc(p.id)}" aria-pressed="${UI.sel.has(p.id)}" aria-label="${UI.sel.has(p.id) ? 'ביטול הבחירה' : 'בחירה'}: ${esc(p.name)}">${UI.sel.has(p.id) ? '✓' : ''}</button>` : ''}
+      ${cl && !UI.selMode ? `<button class="btn sm primary quick-add" data-quick="${esc(p.id)}" aria-label="הוספת ${esc(p.name)} לרשימה של ${esc(cl.name)}">+ ללקוח</button>` : ''}
       ${canWrite ? `<button class="fav-btn" data-fav="${esc(p.id)}" aria-pressed="${isFav(p)}" aria-label="${isFav(p) ? 'הסרה מהמועדפים' : 'הוספה למועדפים'}: ${esc(p.name)}">${isFav(p) ? '★' : '☆'}</button>` : ''}
       <button class="open" data-open="${esc(p.id)}" aria-label="${esc(p.name)}, פרטים">
         <div class="thumb">${imgs.length ? `<img loading="lazy" src="${esc(blob(imgs[0]))}" alt="">` : placeholder(p)}${imgs.length > 1 ? `<span class="imgcount">${imgs.length} תמונות</span>` : ''}${p.example ? '<span class="example">דוגמה</span>' : ''}</div>
@@ -965,6 +984,99 @@ function toggleFav(id) {
   toast(now ? 'נוסף למועדפים' : 'הוסר מהמועדפים');
 }
 $('#results').addEventListener('click', e => { const b = e.target.closest('[data-fav]'); if (b) { e.stopPropagation(); toggleFav(b.dataset.fav); } }, true);
+/* ---------- choose plants for a PDF ---------- */
+const saveSel = () => ls.set('pdfSel', [...UI.sel]);
+function toggleSel(id) { UI.sel.has(id) ? UI.sel.delete(id) : UI.sel.add(id); saveSel(); renderResults(); }
+$('#results').addEventListener('click', e => { if (!UI.selMode) return; const b = e.target.closest('[data-sel],[data-open]'); if (!b) return; e.stopPropagation(); e.preventDefault(); toggleSel(b.dataset.sel || b.dataset.open); }, true);
+$('#selBtn').onclick = () => { UI.selMode = !UI.selMode; $('#selBtn').setAttribute('aria-pressed', String(UI.selMode)); renderResults(); if (UI.selMode) toast('לחצו על צמחים כדי לסמן אותם'); };
+function renderSelBar() {
+  const bar = $('#selBar'); if (!bar) return;
+  const n = [...UI.sel].filter(id => plantById(id)).length;
+  if (!UI.selMode && !n) { bar.innerHTML = ''; return; }
+  const shown = (UI.lastList || []).filter(p => !UI.sel.has(p.id)).length;
+  bar.innerHTML = `<div class="sel-bar" role="region" aria-label="צמחים שנבחרו ל־PDF">
+    <b>${n ? `נבחרו ${n} צמחים` : 'סמנו צמחים'}</b>
+    ${UI.selMode && shown ? `<button class="btn sm" id="selAll">+ בחירת כל המוצגים (${shown})</button>` : ''}
+    ${n ? `<button class="btn sm ghost" id="selClear">ניקוי</button>` : ''}
+    ${UI.selMode ? `<button class="btn sm ghost" id="selDone">סיום סימון</button>` : `<button class="btn sm ghost" id="selEdit">המשך סימון</button>`}
+    <button class="btn sm primary" id="selPdf" ${n ? '' : 'disabled'}>ייצוא PDF</button></div>`;
+  const on = (id, f) => { const b = $('#' + id); if (b) b.onclick = f; };
+  on('selAll', () => { (UI.lastList || []).forEach(p => UI.sel.add(p.id)); saveSel(); renderResults(); });
+  on('selClear', () => { UI.sel.clear(); saveSel(); renderResults(); });
+  on('selDone', () => { UI.selMode = false; $('#selBtn').setAttribute('aria-pressed', 'false'); renderResults(); });
+  on('selEdit', () => { UI.selMode = true; $('#selBtn').setAttribute('aria-pressed', 'true'); renderResults(); });
+  on('selPdf', () => openSelPdf());
+}
+function openSelPdf() {
+  const plants = [...UI.sel].map(plantById).filter(Boolean).sort((a, b) => String(a.name).localeCompare(String(b.name), 'he'));
+  if (!plants.length) return;
+  const catName = UI.cat !== 'all' && catById(UI.cat) ? catById(UI.cat).name : '';
+  const defTitle = UI.q.trim() ? `צמחים: ${UI.q.trim()}` : catName || 'צמחים נבחרים';
+  const pick = new Map(plants.map(p => [p.id, (p.images || []).slice(0, 1)]));
+  let perPlant = 1;
+  const imgsHtml = () => plants.filter(p => (p.images || []).length > 1).map(p => `<div class="list-row" style="flex-wrap:wrap;gap:8px"><b style="min-width:120px">${esc(p.name)}</b>
+      <div class="gphotos">${p.images.map(id => `<button type="button" class="pick-img" data-pp="${esc(p.id)}" data-pi="${esc(id)}" aria-pressed="${pick.get(p.id).includes(id)}" aria-label="תמונה של ${esc(p.name)}"><img src="${esc(blob(id))}" alt=""></button>`).join('')}</div></div>`).join('') || '<p class="hint" style="margin:0">לכל הצמחים שנבחרו יש תמונה אחת או אין תמונה, אין מה לבחור.</p>';
+  openDlg(`<div class="dlg-head"><h2 id="dlgTitle">קובץ PDF של ${plants.length} צמחים</h2>${X}</div>
+    <div class="dlg-body">
+      <div class="field"><label for="spTitle">כותרת הקובץ</label><input class="inp" id="spTitle" value="${esc(defTitle)}"></div>
+      <div class="field"><span style="font-weight:700;font-size:.92em">עיצוב</span><div class="checks">
+        <label><input type="radio" name="spLay" value="cards" checked>כרטיסים (3 בשורה)</label>
+        <label><input type="radio" name="spLay" value="rows">שורות</label>
+        <label><input type="radio" name="spLay" value="page">עמוד מלא לכל צמח</label></div></div>
+      <div class="field"><span style="font-weight:700;font-size:.92em">מה לכלול</span><div class="checks">
+        <label><input type="checkbox" id="spFacts" checked>מאפיינים עיקריים</label>
+        <label><input type="checkbox" id="spAll">כל המאפיינים</label>
+        <label><input type="checkbox" id="spNotes">הערות</label>
+        ${canWrite ? '<label><input type="checkbox" id="spPrice">מחיר החל מ־</label>' : ''}</div></div>
+      <div class="field"><label for="spPer">תמונות לכל צמח</label><select class="inp" id="spPer" style="width:auto"><option value="1">תמונה אחת</option><option value="2">עד 2</option><option value="3">עד 3</option><option value="0">בלי תמונות</option></select></div>
+      <details class="filters" style="margin:0"><summary>בחירת התמונות לכל צמח</summary><div class="stack" id="spImgs" style="padding:0 16px 16px;gap:6px">${imgsHtml()}</div></details>
+      <p class="hint" id="spState" aria-live="polite" style="margin:0"></p></div>
+    <div class="dlg-foot"><button class="btn primary" id="spGo">יצירת PDF</button><button class="btn" data-close>ביטול</button></div>`);
+  const refreshImgs = () => { $('#spImgs').innerHTML = imgsHtml(); };
+  $('#spPer').onchange = e => { perPlant = +e.target.value; plants.forEach(p => pick.set(p.id, (p.images || []).slice(0, perPlant))); refreshImgs(); };
+  $('#spImgs').onclick = e => { const b = e.target.closest('[data-pi]'); if (!b) return; const cur = pick.get(b.dataset.pp); const i = cur.indexOf(b.dataset.pi);
+    if (i >= 0) cur.splice(i, 1); else { cur.push(b.dataset.pi); const lim = perPlant || 3; while (cur.length > Math.max(lim, 1)) cur.shift(); if (!perPlant) { perPlant = 1; $('#spPer').value = '1'; } }
+    refreshImgs(); };
+  $('#spGo').onclick = async () => {
+    const go = $('#spGo'), st = $('#spState'); go.disabled = true;
+    const opt = {title: $('#spTitle').value.trim() || defTitle, layout: (dlg.querySelector('input[name="spLay"]:checked') || {}).value || 'cards', facts: $('#spFacts').checked, all: $('#spAll').checked, notes: $('#spNotes').checked, price: !!($('#spPrice') && $('#spPrice').checked), per: perPlant, pick};
+    try { await makeSelPdf(plants, opt, t => st.textContent = t); if (dlg.open) dlg.close(); }
+    catch (e) { console.warn(e); st.textContent = e && e.message === 'lib' ? 'לא הצלחתי לטעון את רכיב ה-PDF. בדקו חיבור לאינטרנט ונסו שוב.' : e && e.code === 'declined' ? 'ההורדה בוטלה.' : 'יצירת הקובץ נכשלה. נסו שוב.'; go.disabled = false; }
+  };
+}
+async function makeSelPdf(plants, opt, progress) {
+  const B = brandHex();
+  const imgsOf = p => opt.per ? (opt.pick.get(p.id) || []).slice(0, opt.per || 3) : [];
+  const allImgs = plants.flatMap(imgsOf).concat(S.biz.logoId ? [S.biz.logoId] : []);
+  const cardFields = S.fields.filter(f => f.card).sort(byOrder).slice(0, CARD_MAX);
+  const factsOf = p => { const fs = opt.all ? S.fields.slice().sort(byOrder) : opt.facts ? cardFields : []; return fs.map(f => { const v = fmtVal(f, p.attrs && p.attrs[f.id]); return v ? [f.label, v] : null; }).filter(Boolean); };
+  const inline = p => factsOf(p).map(([l, v]) => `${esc(l)}: ${esc(v)}`).join(' · ');
+  const priceOfP = p => { if (!opt.price) return ''; const mp = minPrice(p); return mp != null ? `<div style="font-weight:800;color:#9A4E1F;margin-top:3px">החל מ־${ILS(mp)}</div>` : ''; };
+  const ph = (p, w, h, r = 8) => { const cat = catById((p.categoryIds || [])[0]); return `<div style="width:${w}px;height:${h}px;border-radius:${r}px;flex:none;background:${esc(cat ? cat.color : '#5b7a62')};color:#fff;display:flex;align-items:center;justify-content:center;font-size:${Math.round(h / 2.4)}px;font-family:'Suez One',serif">${esc((p.name || '?')[0])}</div>`; };
+  const img = (id, w, h, r = 8) => `<img crossorigin="anonymous" src="${esc(blob(id))}" style="width:${w}px;height:${h}px;object-fit:cover;border-radius:${r}px;flex:none;display:block">`;
+  const notes = p => opt.notes && p.notes ? `<div style="color:#4A5A4E;font-size:12.5px;margin-top:3px;white-space:pre-wrap">${esc(p.notes)}</div>` : '';
+  const latin = (p, fs = 13) => p.latin ? `<div style="font-style:italic;color:#4A5A4E;font-size:${fs}px;direction:ltr;text-align:right">${esc(p.latin)}</div>` : '';
+  await renderPdf(el => {
+    const blocks = [pdfHeader(el), el(`<div style="margin-top:6px;display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:24px;font-weight:800">${esc(opt.title)}</div><div style="color:#4A5A4E">${plants.length} צמחים</div></div>`)];
+    if (opt.layout === 'rows') plants.forEach(p => { const ims = imgsOf(p);
+      blocks.push(el(`<div style="display:flex;gap:12px;align-items:center;border-bottom:1px solid #DCE3D8;padding:8px 0">
+        ${ims.length ? `<div style="display:flex;gap:6px">${ims.map(id => img(id, 96, 74)).join('')}</div>` : opt.per ? ph(p, 96, 74) : ''}
+        <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:17px">${esc(p.name)}</div>${latin(p)}${inline(p) ? `<div style="color:#4A5A4E;font-size:13px">${inline(p)}</div>` : ''}${notes(p)}${priceOfP(p)}</div></div>`)); });
+    else if (opt.layout === 'page') plants.forEach((p, k) => { const ims = imgsOf(p); const fs = factsOf(p);
+      blocks.push(el(`<div style="display:flex;flex-direction:column;gap:10px;${k ? 'margin-top:4px;' : ''}border-top:3px solid ${B};padding-top:12px">
+        <div><div style="font-family:'Suez One',serif;font-size:30px;color:${B}">${esc(p.name)}</div>${latin(p, 16)}<div style="color:#4A5A4E;font-size:13px">${(p.categoryIds || []).filter(catById).map(catPath).map(esc).join(' · ')}</div></div>
+        ${ims.length ? img(ims[0], 698, ims.length > 1 ? 330 : 400, 12) : opt.per ? ph(p, 698, 200, 12) : ''}
+        ${ims.length > 1 ? `<div style="display:flex;gap:10px">${ims.slice(1).map(id => img(id, 344, 200, 10)).join('')}</div>` : ''}
+        ${fs.length ? `<div style="display:grid;grid-template-columns:1fr 1fr;column-gap:18px;font-size:13.5px">${fs.map(([l, v]) => `<div style="display:flex;gap:8px;padding:4px 2px;border-bottom:1px solid #DCE3D8"><span style="color:#4A5A4E;font-weight:700;flex:none;width:110px">${esc(l)}</span><span>${esc(v)}</span></div>`).join('')}</div>` : ''}
+        ${notes(p)}${priceOfP(p)}</div>`));
+      blocks.push(el('<div data-break="1"></div>')); });
+    else for (let i = 0; i < plants.length; i += 3) blocks.push(el(`<div style="display:flex;gap:14px;align-items:flex-start">${plants.slice(i, i + 3).map(p => { const ims = imgsOf(p);
+      return `<div style="width:222px;border:1px solid #DCE3D8;border-radius:12px;overflow:hidden;background:#fff">${ims.length ? img(ims[0], 222, 166, 0) : opt.per ? ph(p, 222, 166, 0) : ''}
+        ${ims.length > 1 ? `<div style="display:flex;gap:4px;padding:4px 4px 0">${ims.slice(1).map(id => img(id, ims.length > 2 ? 105 : 214, 70, 6)).join('')}</div>` : ''}
+        <div style="padding:8px 10px"><div style="font-weight:800;font-size:16px">${esc(p.name)}</div>${latin(p, 12.5)}${inline(p) ? `<div style="color:#4A5A4E;font-size:12px">${inline(p)}</div>` : ''}${notes(p)}${priceOfP(p)}</div></div>`; }).join('')}</div>`));
+    return blocks;
+  }, `${opt.title}.pdf`, progress, allImgs);
+}
 $('#letters').onclick = e => { const b = e.target.closest('[data-letter]'); if (!b) return; UI.letter = b.dataset.letter; renderResults(); };
 $('#catChips').onclick = e => { if (e.target.closest('#favChip')) { UI.favOnly = !UI.favOnly; renderCatalogChrome(); renderResults(); return; } const b = e.target.closest('[data-cat]'); if (!b) return; UI.cat = b.dataset.cat; renderCatalogChrome(); renderResults(); };
 $('#filterGrid').addEventListener('input', e => { const t = e.target; const fid = t.dataset.rmin || t.dataset.rmax; if (!fid) return; UI.ranges[fid] = {...(UI.ranges[fid] || {}), [t.dataset.rmin ? 'min' : 'max']: t.value}; $('#filtersBox summary').textContent = 'סינון לפי מאפיינים'; renderResults(); });
@@ -1707,7 +1819,10 @@ async function renderPdf(build, filename, progress, imageIds = []) {
   const el = h => { const d = document.createElement('div'); d.innerHTML = h.trim(); return d.firstElementChild; };
   const blocks = build(el).filter(Boolean);
   let pg = newPage();
-  for (const b of blocks) { pg.appendChild(b); if (pg.scrollHeight > H && pg.children.length > 1) { pg.removeChild(b); pg = newPage(); pg.appendChild(b); } }
+  for (const b of blocks) {
+    if (b.dataset && b.dataset.break) { if (pg.children.length) pg = newPage(); continue; }
+    pg.appendChild(b); if (pg.scrollHeight > H && pg.children.length > 1) { pg.removeChild(b); pg = newPage(); pg.appendChild(b); } }
+  if (!pg.children.length && host.children.length > 1) pg.remove();
   await Promise.all($$('img', host).map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
   try { await document.fonts.ready; } catch {}
   const {jsPDF} = window.jspdf; const pdf = new jsPDF({unit: 'pt', format: 'a4'});
@@ -1907,6 +2022,21 @@ function openPlantPricing(id) {
 
 /* ---------- settings ---------- */
 const TYPES = {text: 'טקסט חופשי', number: 'מספר', select: 'בחירה אחת מרשימה', multi: 'כמה בחירות מרשימה', bool: 'כן / לא'};
+/* settings panels fold open/closed by their title; the choice is remembered on this device */
+const FOLD_DEFAULT_CLOSED = ['מאפיינים של צמח'];
+function makeFoldable(host) {
+  const saved = ls.get('foldState', {});
+  $$('.panel', host).forEach(panel => {
+    const h = panel.querySelector('h3'); if (!h || h.closest('.panel') !== panel) return;
+    const title = h.textContent.trim(); const headBox = h.parentElement === panel ? h : h.parentElement;
+    headBox.classList.add('fold-head');
+    const closed = title in saved ? saved[title] : FOLD_DEFAULT_CLOSED.includes(title);
+    panel.classList.toggle('folded', closed);
+    h.setAttribute('role', 'button'); h.tabIndex = 0; h.setAttribute('aria-expanded', String(!closed)); h.classList.add('fold-title');
+    const toggle = () => { const c = !panel.classList.contains('folded'); panel.classList.toggle('folded', c); h.setAttribute('aria-expanded', String(!c)); const st = ls.get('foldState', {}); st[title] = c; ls.set('foldState', st); };
+    h.onclick = toggle; h.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+  });
+}
 function renderSettings(host) {
   const a11y = `<div class="panel stack">
       <h3 style="font-size:1.3rem">נגישות</h3>
@@ -1987,7 +2117,7 @@ function renderSettings(host) {
   $('#showCatPr', host).onchange = e => upsert('settings/prices', {showCatalogPrices: e.target.checked});
   $$('[data-brand]', host).forEach(b => b.onclick = () => { S.biz = {...S.biz, accent: b.dataset.brand}; applyBrand(); upsert('meta/business', {accent: b.dataset.brand}); renderView(true); toast('הצבע עודכן'); });
   $$('input[name="themeSel"]', host).forEach(r => r.onchange = () => { theme = r.value; applyTheme(); });
-  wireBackup(host); wireAi(host);
+  wireBackup(host); wireAi(host); makeFoldable(host);
   $('#bz-name', host).onchange = e => upsert('meta/business', {name: e.target.value.trim()});
   $('#bz-phone', host).onchange = e => upsert('meta/business', {phone: e.target.value.trim()});
   const li = $('#logoIn', host);
