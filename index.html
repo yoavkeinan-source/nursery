@@ -295,6 +295,15 @@ label.ai-filled{background:var(--clay-soft)!important}
 .swap-list .thumb{aspect-ratio:1}
 .swap-list b{display:block;padding:6px 8px;font-size:.9rem}
 .swap-list small{display:block;padding:0 8px 8px;color:var(--ink-2)}
+.chips{flex-direction:column;align-items:stretch}
+.chip-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip-row.sub{padding-inline-start:14px;border-inline-start:3px solid var(--leaf-soft)}
+.sub-lbl{font-weight:800;color:var(--ink-2);font-size:.9em}
+.cat-tree label{margin-inline-start:calc(var(--d,0) * 22px)}
+.cat-row{padding-inline-start:calc(var(--d,0) * 26px);flex-wrap:nowrap}
+.cat-row .inp{min-width:0}
+@media (max-width:760px){.cat-row{flex-wrap:wrap}}
+.cat-row .tree-mark{color:var(--ink-2);font-weight:800}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
@@ -446,13 +455,23 @@ $$('.tab').forEach(t => t.onclick = () => show(t.dataset.view));
 /* ---------- pricing ---------- */
 const plantById = id => S.plants.find(p => p.id === id);
 const catById = id => S.categories.find(c => c.id === id);
+/* categories form a tree: each one may sit under a parent (parentId) */
+const catParent = c => { const p = c && c.parentId && catById(c.parentId); return p && p.id !== c.id ? p : null; };
+function catChain(id) { const out = []; let c = catById(id); const seen = new Set(); while (c && !seen.has(c.id)) { seen.add(c.id); out.unshift(c); c = catParent(c); } return out; }
+const catKids = id => S.categories.filter(c => (catParent(c) ? catParent(c).id : '') === (id || '')).sort(byOrder);
+function catDesc(id) { const out = new Set([id]); let grew = true; while (grew) { grew = false; S.categories.forEach(c => { const pa = catParent(c); if (pa && out.has(pa.id) && !out.has(c.id)) { out.add(c.id); grew = true; } }); } return out; }
+const catPath = id => catChain(id).map(c => c.name).join(' › ');
+function catTree() { const out = []; const walk = (pid, depth) => catKids(pid).forEach(c => { if (out.some(x => x.c.id === c.id)) return; out.push({c, depth}); walk(c.id, depth + 1); }); walk('', 0); S.categories.forEach(c => { if (!out.some(x => x.c.id === c.id)) out.push({c, depth: 0}); }); return out; }
+const plantInCat = (p, id) => { const d = catDesc(id); return (p.categoryIds || []).some(x => d.has(x)); };
+/* a category's own value, or the nearest parent's */
+const inherited = (map, id, get = v => v) => { for (const c of catChain(id).reverse()) { const v = map && map[c.id] != null ? get(map[c.id]) : null; if (v != null) return v; } return null; };
 const sizeById = id => S.sizes.find(s => s.id === id);
 const pp = id => S.plantPricing.find(x => x.id === id) || {};
 function roundPrice(v) { const r = Number(S.pricing.rounding) || 1; return Math.round(v / r) * r; }
-function catCost(catIds, sizeId) { for (const c of (catIds || [])) { const v = num(S.pricing.cost && S.pricing.cost[c] && S.pricing.cost[c][sizeId]); if (v != null) return v; } return null; }
+function catCost(catIds, sizeId) { for (const c of (catIds || [])) { const v = inherited(S.pricing.cost, c, m => num(m[sizeId])); if (v != null) return v; } return null; }
 function markupFor(catIds, own) {
   if (num(own) != null) return num(own);
-  for (const c of (catIds || [])) { const v = num(S.pricing.markup && S.pricing.markup[c]); if (v != null) return v; }
+  for (const c of (catIds || [])) { const v = inherited(S.pricing.markup, c, num); if (v != null) return v; }
   return num(S.pricing.defaultMarkup) ?? 0;
 }
 /* full price breakdown for a plant (optionally with unsaved editor values) */
@@ -528,7 +547,7 @@ function placeholder(p) {
   return `<div class="ph" style="background:${esc(c ? c.color : '#5b7a62')}"><span aria-hidden="true">${esc((p.name || '?').trim()[0] || '?')}</span>${PH_LEAF}</div>`;
 }
 function catPills(p) {
-  return (p.categoryIds || []).map(catById).filter(Boolean).map(c => `<span class="cat"><span class="dot" style="background:${esc(c.color)}"></span>${esc(c.name)}</span>`).join('');
+  return (p.categoryIds || []).map(catById).filter(Boolean).map(c => `<span class="cat"><span class="dot" style="background:${esc(c.color)}"></span>${esc(catPath(c.id))}</span>`).join('');
 }
 function keyFacts(p) {
   return S.fields.filter(f => f.card).slice(0, 3).map(f => { const v = fmtVal(f, p.attrs && p.attrs[f.id]); return v ? `<span><b>${esc(f.label)}:</b> ${esc(v)}</span>` : ''; }).join('');
@@ -536,7 +555,7 @@ function keyFacts(p) {
 function haystack(p) {
   const parts = [p.name, p.latin, p.otherNames, p.notes, ...(p.varieties || []).flatMap(v => [v.name, v.desc])];
   if (canWrite) parts.push(pp(p.id).supplier);
-  (p.categoryIds || []).forEach(id => { const c = catById(id); if (c) parts.push(c.name); });
+  (p.categoryIds || []).forEach(id => catChain(id).forEach(c => parts.push(c.name)));
   S.fields.forEach(f => { const v = p.attrs && p.attrs[f.id]; if (v == null || v === '') return;
     if (f.type === 'bool') { if (v) parts.push(f.label); } else parts.push(f.label + ' ' + (Array.isArray(v) ? v.join(' ') : String(v))); });
   return norm(parts.join(' '));
@@ -552,7 +571,7 @@ function renderLetters() {
 function filtered() {
   let list = S.plants.slice();
   if (UI.smart && UI.smart.ids) { const set = new Map(UI.smart.ids.map((id, i) => [id, i])); list = list.filter(p => set.has(p.id)).sort((a, b) => set.get(a.id) - set.get(b.id)); }
-  if (UI.cat !== 'all') list = list.filter(p => (p.categoryIds || []).includes(UI.cat));
+  if (UI.cat !== 'all' && catById(UI.cat)) list = list.filter(p => plantInCat(p, UI.cat));
   if (UI.letter) list = list.filter(p => firstLetter(p.name) === UI.letter);
   for (const [fid, val] of Object.entries(UI.filters)) {
     if (val === '' || val == null) continue;
@@ -586,9 +605,13 @@ function filtered() {
   return {list, fuzzy};
 }
 function renderCatalogChrome() {
-  const counts = {}; S.plants.forEach(p => (p.categoryIds || []).forEach(c => counts[c] = (counts[c] || 0) + 1));
-  $('#catChips').innerHTML = `<button class="chip" data-cat="all" aria-pressed="${UI.cat === 'all'}">הכל <span class="n">${S.plants.length}</span></button>` +
-    S.categories.map(c => `<button class="chip" data-cat="${esc(c.id)}" aria-pressed="${UI.cat === c.id}"><span class="dot" style="background:${esc(c.color)}"></span>${esc(c.name)} <span class="n">${counts[c.id] || 0}</span></button>`).join('');
+  if (UI.cat !== 'all' && !catById(UI.cat)) UI.cat = 'all';
+  const count = id => S.plants.filter(p => plantInCat(p, id)).length;
+  const chain = UI.cat === 'all' ? [] : catChain(UI.cat);
+  const chip = (c, on) => `<button class="chip" data-cat="${esc(c.id)}" aria-pressed="${on}"><span class="dot" style="background:${esc(c.color)}"></span>${esc(c.name)} <span class="n">${count(c.id)}</span></button>`;
+  const rows = [`<div class="chip-row" role="group" aria-label="קטגוריות"><button class="chip" data-cat="all" aria-pressed="${UI.cat === 'all'}">הכל <span class="n">${S.plants.length}</span></button>${catKids('').map(c => chip(c, chain[0] && chain[0].id === c.id)).join('')}</div>`];
+  chain.forEach((c, i) => { const kids = catKids(c.id); if (kids.length) rows.push(`<div class="chip-row sub" role="group" aria-label="תת־קטגוריות של ${esc(c.name)}"><span class="sub-lbl">${esc(c.name)}:</span><button class="chip" data-cat="${esc(c.id)}" aria-pressed="${i === chain.length - 1}">הכל ב${esc(c.name)}</button>${kids.map(k => chip(k, chain[i + 1] && chain[i + 1].id === k.id)).join('')}</div>`); });
+  $('#catChips').innerHTML = rows.join('');
   const fg = $('#filterGrid');
   if (!fg.contains(document.activeElement)) {
     const ff = S.fields.filter(f => ['select', 'multi', 'bool'].includes(f.type));
@@ -673,7 +696,7 @@ let smartAbort = null;
 function catalogRows(withPrice) {
   return S.plants.slice(0, 600).map(p => {
     const at = S.fields.map(f => { const v = fmtVal(f, p.attrs && p.attrs[f.id]); return v ? `${f.label}=${v}` : ''; }).filter(Boolean).join('; ');
-    const cats = (p.categoryIds || []).map(catById).filter(Boolean).map(c => c.name).join('/');
+    const cats = (p.categoryIds || []).filter(catById).map(catPath).join(' / ');
     const mp = withPrice ? minPrice(p) : null;
     const ss = withPrice ? seasonState(p) : null;
     return `${p.id} | ${p.name}${p.latin ? ' (' + p.latin + ')' : ''} | ${cats} | ${at}${ss && ss.known ? ' | שתילה: ' + monthsText(ss.plantMonths) + '; זמין: ' + monthsText(ss.availMonths) : ''}${mp != null ? ' | מחיר מ-' + mp : ''}${p.notes ? ' | ' + String(p.notes).slice(0, 140) : ''}`;
@@ -874,7 +897,7 @@ const SEASONAL_WORD = 'עונתי';
 /* a plant counts as seasonal when one of its list values or categories says "עונתי" */
 function isSeasonalPlant(p) {
   for (const f of S.fields) { const v = p.attrs && p.attrs[f.id]; if ((Array.isArray(v) ? v : [v]).some(x => typeof x === 'string' && x.includes(SEASONAL_WORD))) return true; }
-  return (p.categoryIds || []).some(id => { const c = catById(id); return c && c.name.includes(SEASONAL_WORD); });
+  return (p.categoryIds || []).some(id => catChain(id).some(c => c.name.includes(SEASONAL_WORD)));
 }
 const monthsText = arr => (arr || []).slice().sort((a, b) => a - b).map(m => MONTHS[m - 1]).join(', ');
 function seasonState(p) {
@@ -933,7 +956,7 @@ function openEditor(id, prefill = null, preUploaded = [], opts = {}) {
       <div class="field"><label for="ed-other">שמות נוספים / כינוי</label><input class="inp" id="ed-other" value="${esc(p.otherNames)}" placeholder="שם עממי, כינוי"></div>
     </div>
     <div id="nameSuggest"></div>
-    <fieldset><legend>קטגוריות</legend><div class="checks">${S.categories.length ? S.categories.map(c => `<label><input type="checkbox" data-catc value="${esc(c.id)}" ${p.categoryIds.includes(c.id) ? 'checked' : ''}><span class="dot" style="width:10px;height:10px;border-radius:50%;background:${esc(c.color)}"></span>${esc(c.name)}</label>`).join('') : '<span class="hint">אין קטגוריות. הוסיפו בהגדרות.</span>'}</div></fieldset>
+    <fieldset><legend>קטגוריות</legend>${S.categories.length ? `<p class="hint" style="margin-top:0">מספיק לסמן את הקטגוריה המדויקת ביותר. צמח ב"ורוד" מופיע אוטומטית גם ב"עצים פורחים" וב"עצי נוי".</p>` : ''}<div class="checks cat-tree" style="flex-direction:column;align-items:flex-start">${S.categories.length ? catTree().map(({c, depth}) => `<label style="--d:${depth}"><input type="checkbox" data-catc value="${esc(c.id)}" ${p.categoryIds.includes(c.id) ? 'checked' : ''}><span class="dot" style="width:10px;height:10px;border-radius:50%;background:${esc(c.color)}"></span>${depth ? '<span class="muted" aria-hidden="true">└ </span>' : ''}${esc(c.name)}</label>`).join('') : '<span class="hint">אין קטגוריות. הוסיפו בהגדרות.</span>'}</div></fieldset>
     <fieldset><legend>זנים</legend>
       <p class="hint" style="margin-top:0">אם הצמח נמכר בכמה זנים או צבעים, רשמו אותם כאן. בהוספה ללקוח בוחרים זן.</p>
       <div id="varRows" class="stack" style="gap:8px"></div>
@@ -968,7 +991,7 @@ function openEditor(id, prefill = null, preUploaded = [], opts = {}) {
 
   const form = $('#edForm');
   const readCats = () => $$('[data-catc]', form).filter(x => x.checked).map(x => x.value);
-  const formSeasonal = () => $$('select[data-attr]', form).some(x => x.value.includes(SEASONAL_WORD)) || $$('[data-attrm]:checked', form).some(x => x.value.includes(SEASONAL_WORD)) || readCats().some(id => { const c = catById(id); return c && c.name.includes(SEASONAL_WORD); });
+  const formSeasonal = () => $$('select[data-attr]', form).some(x => x.value.includes(SEASONAL_WORD)) || $$('[data-attrm]:checked', form).some(x => x.value.includes(SEASONAL_WORD)) || readCats().some(id => catChain(id).some(c => c.name.includes(SEASONAL_WORD)));
   const toggleSeason = () => { $('#seasonBox').hidden = !formSeasonal(); };
   form.addEventListener('change', toggleSeason);
   const refreshLinks = () => { const t = {latin: $('#ed-latin').value.trim(), name: $('#ed-name').value.trim()}; $('#meltLink').href = meltserUrl(t); $('#gImg').href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(t.latin || t.name); };
@@ -1078,7 +1101,7 @@ function openEditor(id, prefill = null, preUploaded = [], opts = {}) {
 ${schema}
 כללים: לסוג select החזר ערך אחד, ועדיף מתוך הרשימה. לסוג multi החזר מערך, ועדיף מתוך הרשימה. אם ערך נכון חסר ברשימה, אפשר להחזיר ערך חדש קצר. לסוג bool החזר true או false. לסוג number החזר מספר בלבד (לגובה: הגובה המרבי). אם אינך בטוח, השמט את השדה.
 החזר JSON בלבד:
-{"fullName":"שם עברי מלא","latin":"שם לטיני","otherNames":"כינויים","seasonal":true/false (האם זה צמח עונתי חד-עונתי),"plantMonths":[מספרי חודשים 1-12 לשתילה בישראל, רק לצמח עונתי],"availMonths":[מספרי חודשים 1-12 שבהם הוא נמכר בדרך כלל במשתלות, רק לצמח עונתי],"confidence":"גבוהה|בינונית|נמוכה","notes":"2-3 משפטים: שתילה, השקיה, גיזום ושימושים בגינה בישראל","attrs":{...},"categories":["מתוך: ${S.categories.map(c => c.name).join(', ')}"]}`;
+{"fullName":"שם עברי מלא","latin":"שם לטיני","otherNames":"כינויים","seasonal":true/false (האם זה צמח עונתי חד-עונתי),"plantMonths":[מספרי חודשים 1-12 לשתילה בישראל, רק לצמח עונתי],"availMonths":[מספרי חודשים 1-12 שבהם הוא נמכר בדרך כלל במשתלות, רק לצמח עונתי],"confidence":"גבוהה|בינונית|נמוכה","notes":"2-3 משפטים: שתילה, השקיה, גיזום ושימושים בגינה בישראל","attrs":{...},"categories":["מתוך (בחר את המדויקת ביותר): ${catTree().map(x => catPath(x.c.id)).join(', ')}"]}`;
     try {
       const r = await sample.json(prompt, {modelTier: 'default', ...(photo ? {images: [photo]} : {})});
       let n = 0;
@@ -1103,7 +1126,7 @@ ${schema}
         const fillM = (attr, arr) => { const boxes = $$(`[${attr}]`, form); if (!Array.isArray(arr) || (!overwrite && boxes.some(b => b.checked))) return; boxes.forEach(b => { const on = arr.map(Number).includes(+b.getAttribute(attr)); if (on !== b.checked) { b.checked = on; if (on) b.closest('label').classList.add('ai-filled'); } }); };
         fillM('data-pm', r.plantMonths); fillM('data-am', r.availMonths);
       }
-      if (Array.isArray(r.categories) && (overwrite || !readCats().length)) $$('[data-catc]', form).forEach(b => { const c = catById(b.value); if (c && r.categories.includes(c.name) && !b.checked) { b.checked = true; b.closest('label').classList.add('ai-filled'); } });
+      if (Array.isArray(r.categories) && (overwrite || !readCats().length)) $$('[data-catc]', form).forEach(b => { const c = catById(b.value); if (c && catIdsFromNames(r.categories).includes(c.id) && !b.checked) { b.checked = true; b.closest('label').classList.add('ai-filled'); } });
       syncPr(); renderSz(); refreshLinks(); toggleSeason();
       st.style.color = 'var(--leaf)';
       st.textContent = `${photo && r.confidence ? 'ודאות הזיהוי: ' + r.confidence + '. ' : ''}מולאו ${n} שדות (מסומנים במסגרת). בדקו ותקנו לפני השמירה.`;
@@ -1387,12 +1410,13 @@ function renderPrices(host) {
       <form id="addSize" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="newSize">גודל חדש</label><input class="inp" id="newSize" style="flex:1 1 220px;width:auto" placeholder="למשל: מיכל 25 ליטר, עציץ קוטר 30"><button class="btn primary">הוספת גודל</button></form>
     </div>
     <div class="panel stack">
-      <div><h3 style="font-size:1.3rem">מחיר קנייה לפי קטגוריה וגודל</h3><p class="hint" style="margin:4px 0 0">מתחת לכל מחיר קנייה מוצג המחיר ללקוח. השאירו ריק כשאין מחיר. רואים את המסך הזה רק אתם.</p></div>
+      <div><h3 style="font-size:1.3rem">מחיר קנייה לפי קטגוריה וגודל</h3><p class="hint" style="margin:4px 0 0">מתחת לכל מחיר קנייה מוצג המחיר ללקוח. תת־קטגוריה שהשארתם ריקה מקבלת את המחיר והרווח של הקטגוריה שמעליה. רואים את המסך הזה רק אתם.</p></div>
       ${S.categories.length && sz.length ? `<div class="tscroll matrix"><table class="t"><thead><tr><th>קטגוריה</th><th>% רווח</th>${sz.map(s => `<th>${esc(s.label)}</th>`).join('')}</tr></thead><tbody>
-        ${S.categories.map(c => `<tr><td><span class="cat"><span class="dot" style="background:${esc(c.color)}"></span>${esc(c.name)}</span></td>
-          <td><input class="inp" style="width:76px" type="number" step="any" inputmode="decimal" data-mk="${esc(c.id)}" value="${esc(P.markup && P.markup[c.id] != null ? P.markup[c.id] : '')}" placeholder="${esc(P.defaultMarkup ?? '')}" aria-label="אחוז רווח ${esc(c.name)}"></td>
-          ${sz.map(s => { const v = P.cost && P.cost[c.id] && P.cost[c.id][s.id]; const sale = num(v) != null ? roundPrice(num(v) * (1 + markupFor([c.id]) / 100)) : null;
-            return `<td><input class="inp" type="number" min="0" step="any" inputmode="decimal" data-mc="${esc(c.id)}" data-ms="${esc(s.id)}" value="${esc(v ?? '')}" aria-label="מחיר קנייה ${esc(c.name)}, ${esc(s.label)}"><span class="calc">${sale != null ? 'ללקוח ' + ILS(sale) : '&nbsp;'}</span></td>`; }).join('')}</tr>`).join('')}
+        ${catTree().map(({c, depth}) => { const pa = catParent(c); const inhMk = pa ? markupFor([pa.id]) : (P.defaultMarkup ?? '');
+          return `<tr><td style="padding-inline-start:${10 + depth * 22}px">${depth ? '<span class="muted" aria-hidden="true">└ </span>' : ''}<span class="cat"><span class="dot" style="background:${esc(c.color)}"></span>${esc(c.name)}</span></td>
+          <td><input class="inp" style="width:76px" type="number" step="any" inputmode="decimal" data-mk="${esc(c.id)}" value="${esc(P.markup && P.markup[c.id] != null ? P.markup[c.id] : '')}" placeholder="${esc(inhMk)}" aria-label="אחוז רווח ${esc(catPath(c.id))}"></td>
+          ${sz.map(s => { const own = num(P.cost && P.cost[c.id] && P.cost[c.id][s.id]); const eff = catCost([c.id], s.id); const fromParent = own == null && eff != null; const sale = eff != null ? roundPrice(eff * (1 + markupFor([c.id]) / 100)) : null;
+            return `<td><input class="inp" type="number" min="0" step="any" inputmode="decimal" data-mc="${esc(c.id)}" data-ms="${esc(s.id)}" value="${esc(own ?? '')}" placeholder="${fromParent ? esc(eff) : ''}" aria-label="מחיר קנייה ${esc(catPath(c.id))}, ${esc(s.label)}"><span class="calc">${sale != null ? 'ללקוח ' + ILS(sale) + (fromParent ? ' · מהקטגוריה מעל' : '') : '&nbsp;'}</span></td>`; }).join('')}</tr>`; }).join('')}
       </tbody></table></div>` : '<p class="muted">הוסיפו קטגוריות (בהגדרות) וגדלים (למעלה) כדי לבנות את המחירון.</p>'}
       <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:14px">
         <div class="field" style="flex:0 0 170px"><label for="pct">עדכון מחירי הקנייה ב־%</label><input class="inp" id="pct" type="number" step="any" placeholder="למשל 5"></div>
@@ -1507,11 +1531,16 @@ function renderSettings(host) {
       </div>
     </div>
     <div class="panel stack">
-      <div><h3 style="font-size:1.3rem">קטגוריות</h3><p class="hint" style="margin:4px 0 0">הקבוצות שבהן מסדרים את הצמחים. צמח יכול להיות ביותר מקטגוריה אחת.</p></div>
-      <div>${S.categories.map((c, k) => `<div class="list-row"><label class="sr" for="cn-${esc(c.id)}">שם הקטגוריה</label><input class="inp" id="cn-${esc(c.id)}" data-cn="${esc(c.id)}" value="${esc(c.name)}">
-        <div class="swatches" role="group" aria-label="צבע ל${esc(c.name)}">${COLORS.map((col, ci) => `<button class="sw" style="background:${col}" data-cc="${esc(c.id)}" data-col="${col}" aria-label="צבע ${ci + 1}" aria-pressed="${c.color === col}"></button>`).join('')}</div>
-        <button class="btn sm" data-cu="${k}" aria-label="הזזה למעלה" ${k === 0 ? 'disabled' : ''}>↑</button><button class="btn sm" data-cd="${k}" aria-label="הזזה למטה" ${k === S.categories.length - 1 ? 'disabled' : ''}>↓</button><button class="btn sm danger" data-cx="${esc(c.id)}">מחיקה</button></div>`).join('') || '<p class="muted">אין קטגוריות.</p>'}</div>
-      <form id="addCat" style="display:flex;gap:8px;flex-wrap:wrap"><label class="sr" for="newCat">קטגוריה חדשה</label><input class="inp" id="newCat" style="flex:1 1 220px;width:auto" placeholder="למשל: צמחי צל"><button class="btn primary">הוספת קטגוריה</button></form>
+      <div><h3 style="font-size:1.3rem">קטגוריות</h3><p class="hint" style="margin:4px 0 0">הקבוצות שבהן מסדרים את הצמחים. כל קטגוריה יכולה לשבת "תחת" קטגוריה אחרת, בכמה רמות שרוצים. למשל: עצי נוי ← עצים פורחים ← ורוד.</p></div>
+      <div>${catTree().map(({c, depth}) => { const sibs = catKids(catParent(c) ? catParent(c).id : ''); const k = sibs.findIndex(x => x.id === c.id); const bad = catDesc(c.id);
+        return `<div class="list-row cat-row" style="--d:${depth}">${depth ? '<span class="tree-mark" aria-hidden="true">└</span>' : ''}<label class="sr" for="cn-${esc(c.id)}">שם הקטגוריה</label><input class="inp" id="cn-${esc(c.id)}" data-cn="${esc(c.id)}" value="${esc(c.name)}">
+        <label class="sr" for="cp-${esc(c.id)}">תחת קטגוריה</label><select class="inp" id="cp-${esc(c.id)}" data-cp="${esc(c.id)}" style="width:auto;flex:0 1 190px"><option value="">ראשית</option>${catTree().filter(x => !bad.has(x.c.id)).map(x => `<option value="${esc(x.c.id)}" ${catParent(c) && catParent(c).id === x.c.id ? 'selected' : ''}>תחת: ${esc(catPath(x.c.id))}</option>`).join('')}</select>
+        <button class="sw" style="background:${esc(c.color)};flex:none" data-ccy="${esc(c.id)}" title="החלפת צבע" aria-label="החלפת הצבע של ${esc(c.name)}"></button>
+        <button class="btn sm" data-cu="${esc(c.id)}" aria-label="הזזה למעלה" ${k <= 0 ? 'disabled' : ''}>↑</button><button class="btn sm" data-cd="${esc(c.id)}" aria-label="הזזה למטה" ${k === sibs.length - 1 ? 'disabled' : ''}>↓</button><button class="btn sm danger" data-cx="${esc(c.id)}">מחיקה</button></div>`; }).join('') || '<p class="muted">אין קטגוריות.</p>'}</div>
+      <form id="addCat" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="field" style="flex:1 1 200px"><label for="newCat">קטגוריה חדשה</label><input class="inp" id="newCat" placeholder="למשל: פורחים בוורוד"></div>
+        <div class="field" style="flex:0 1 220px"><label for="newCatParent">מיקום</label><select class="inp" id="newCatParent"><option value="">קטגוריה ראשית</option>${catTree().map(x => `<option value="${esc(x.c.id)}" ${UI.lastCatParent === x.c.id ? 'selected' : ''}>תחת: ${esc(catPath(x.c.id))}</option>`).join('')}</select></div>
+        <button class="btn primary">הוספת קטגוריה</button></form>
     </div>
     <div class="panel stack">
       <div><h3 style="font-size:1.3rem">מאפיינים של צמח</h3><p class="hint" style="margin:4px 0 0">השדות שממלאים לכל צמח, מסודרים בקבוצות כמו בקטלוג של משתלת מלצר. כל מאפיין נכלל בחיפוש. מאפיינים מסוג בחירה וכן/לא מופיעים גם כמסנן בקטלוג. סמנו "בכרטיס" כדי להציג אותם על כרטיס הצמח (עד 3).</p></div>
@@ -1553,15 +1582,22 @@ function renderSettings(host) {
   const lr = $('#logoRm', host); if (lr) lr.onclick = async () => { const old = S.biz.logoId; await upsert('meta/business', {logoId: null}); if (old && assets) { try { await assets.delete(old); } catch {} } };
   $$('[data-cn]', host).forEach(el => el.onchange = () => wq('categories/' + el.dataset.cn, r => r.update({name: el.value.trim()})));
   $$('[data-cc]', host).forEach(b => b.onclick = () => wq('categories/' + b.dataset.cc, r => r.update({color: b.dataset.col})));
+  $$('[data-ccy]', host).forEach(b => b.onclick = () => { const c = catById(b.dataset.ccy); const i = COLORS.indexOf(c.color); wq('categories/' + c.id, r => r.update({color: COLORS[(i + 1) % COLORS.length]})); });
   const reo = (coll, arr) => async (k, d) => { const a = arr.slice(); [a[k], a[k + d]] = [a[k + d], a[k]]; for (let i = 0; i < a.length; i++) if (a[i].order !== i) await wq(coll + '/' + a[i].id, r => r.update({order: i})); };
-  const rc = reo('categories', S.categories), rf = reo('fields', S.fields);
-  $$('[data-cu]', host).forEach(b => b.onclick = () => rc(+b.dataset.cu, -1));
-  $$('[data-cd]', host).forEach(b => b.onclick = () => rc(+b.dataset.cd, 1));
+  const rf = reo('fields', S.fields);
+  const moveCat = (id, d) => { const c = catById(id); const sibs = catKids(catParent(c) ? catParent(c).id : ''); const k = sibs.findIndex(x => x.id === id); if (k + d < 0 || k + d >= sibs.length) return; reo('categories', sibs)(k, d); };
+  $$('[data-cu]', host).forEach(b => b.onclick = () => moveCat(b.dataset.cu, -1));
+  $$('[data-cd]', host).forEach(b => b.onclick = () => moveCat(b.dataset.cd, 1));
+  $$('[data-cp]', host).forEach(el => el.onchange = () => { const pid = el.value; const n = catKids(pid).length; wq('categories/' + el.dataset.cp, r => r.update({parentId: pid, order: n})); });
   $$('[data-fu2]', host).forEach(b => b.onclick = () => rf(+b.dataset.fu2, -1));
   $$('[data-fd]', host).forEach(b => b.onclick = () => rf(+b.dataset.fd, 1));
-  $$('[data-cx]', host).forEach(b => b.onclick = async () => { const c = catById(b.dataset.cx); const n = S.plants.filter(p => (p.categoryIds || []).includes(c.id)).length;
-    if (!await confirmBox('מחיקת קטגוריה', `למחוק את "${c.name}"? ${n ? n + ' צמחים כבר לא ישויכו אליה, אבל הם לא יימחקו.' : ''}`)) return; await wq('categories/' + c.id, r => r.delete()); });
-  $('#addCat', host).onsubmit = async e => { e.preventDefault(); const v = $('#newCat').value.trim(); if (!v) return; const ref = db.collection('categories').doc(); await wq(ref.path, r => r.set({name: v, color: COLORS[S.categories.length % COLORS.length], order: S.categories.length})); };
+  $$('[data-cx]', host).forEach(b => b.onclick = async () => { const c = catById(b.dataset.cx); const n = S.plants.filter(p => (p.categoryIds || []).includes(c.id)).length; const kids = catKids(c.id); const pa = catParent(c);
+    if (!await confirmBox('מחיקת קטגוריה', `למחוק את "${c.name}"? ${n ? n + ' צמחים כבר לא ישויכו אליה, אבל הם לא יימחקו. ' : ''}${kids.length ? 'תתי־הקטגוריות שלה יעברו ' + (pa ? 'אל "' + pa.name + '"' : 'לרמה הראשית') + '.' : ''}`)) return;
+    for (const k of kids) await wq('categories/' + k.id, r => r.update({parentId: pa ? pa.id : ''}));
+    await wq('categories/' + c.id, r => r.delete()); });
+  $('#addCat', host).onsubmit = async e => { e.preventDefault(); const v = $('#newCat').value.trim(); if (!v) return; const pid = $('#newCatParent').value; const pa = catById(pid);
+    const ref = db.collection('categories').doc(); UI.lastCatParent = pid;
+    await wq(ref.path, r => r.set({name: v, color: pa ? pa.color : COLORS[S.categories.length % COLORS.length], order: catKids(pid).length, parentId: pid})); };
   $$('[data-fl]', host).forEach(el => el.onchange = () => wq('fields/' + el.dataset.fl, r => r.update({label: el.value.trim()})));
   $$('[data-ft]', host).forEach(el => el.onchange = () => wq('fields/' + el.dataset.ft, r => r.update({type: el.value})));
   $$('[data-fo]', host).forEach(el => el.onchange = () => wq('fields/' + el.dataset.fo, r => r.update({options: el.value.split(/[,،]/).map(s => s.trim()).filter(Boolean)})));
@@ -1587,7 +1623,7 @@ function cleanAttrs(raw) {
   }
   return out;
 }
-const catIdsFromNames = names => (Array.isArray(names) ? names : []).map(n => S.categories.find(c => c.name === n)).filter(Boolean).map(c => c.id);
+const catIdsFromNames = names => (Array.isArray(names) ? names : []).map(n => S.categories.find(c => catPath(c.id) === n) || S.categories.find(c => c.name === n)).filter(Boolean).map(c => c.id);
 const fieldSchema = () => S.fields.map(f => `- "${f.id}": ${f.label}${f.unit ? ' ביחידות ' + f.unit : ''}; סוג ${f.type}${f.options && f.options.length ? '; ערכים מותרים בלבד: ' + f.options.join(' | ') : ''}`).join('\n');
 
 /* ---------- bulk add from a list of names ---------- */
@@ -1609,7 +1645,7 @@ function openBulk() {
       ${results.map((r, k) => `<tr><td><input type="checkbox" data-bk="${k}" ${r.sel ? 'checked' : ''} ${r.ok ? '' : 'disabled'} style="width:20px;height:20px;accent-color:var(--leaf)" aria-label="שמירת ${esc(r.input)}"></td>
         <td>${esc(r.input)}</td>
         <td>${r.ok ? `<b>${esc(r.fullName)}</b>${r.latin ? `<div class="latin">${esc(r.latin)}</div>` : ''}` : `<span class="muted">${esc(r.reason || 'לא זוהה בוודאות')}</span>`}</td>
-        <td>${esc(catIdsFromNames(r.categories).map(id => catById(id).name).join(', '))}</td>
+        <td>${esc(catIdsFromNames(r.categories).map(catPath).join(', '))}</td>
         <td>${r.ok ? Object.keys(r.attrs).length + ' מתוך ' + S.fields.length : ''}</td>
         <td>${esc(r.confidence || '')}</td></tr>`).join('')}</tbody></table></div>` : '';
     const n = results.filter(r => r.sel).length;
@@ -1639,7 +1675,7 @@ ${fieldSchema()}
 לסוג select ערך אחד מהרשימה, לסוג multi מערך מהרשימה, לסוג bool רק true כשנכון, לסוג number מספר (לגובה: הגובה המרבי במטרים).
 השמות: ${JSON.stringify(chunk)}
 החזר JSON בלבד:
-{"plants":[{"input":"השם כפי שנכתב","found":true,"confidence":"גבוהה|בינונית|נמוכה","fullName":"","latin":"","otherNames":"","notes":"2 משפטים על גידול בישראל","attrs":{},"categories":["מתוך: ${S.categories.map(c => c.name).join(', ')}"],"seasonal":false,"plantMonths":[],"availMonths":[]}]}`, {modelTier: 'default', signal: abort.signal});
+{"plants":[{"input":"השם כפי שנכתב","found":true,"confidence":"גבוהה|בינונית|נמוכה","fullName":"","latin":"","otherNames":"","notes":"2 משפטים על גידול בישראל","attrs":{},"categories":["מתוך (בחר את המדויקת ביותר): ${catTree().map(x => catPath(x.c.id)).join(', ')}"],"seasonal":false,"plantMonths":[],"availMonths":[]}]}`, {modelTier: 'default', signal: abort.signal});
         for (const name of chunk) {
           const x = (r.plants || []).find(p => norm(p.input) === norm(name)) || {};
           const ok = !!(x.found && x.fullName);
@@ -1767,7 +1803,7 @@ async function exportExcel() {
     const X2 = window.XLSX; const wb = X2.utils.book_new();
     const sizes = S.sizes.slice().sort(byOrder);
     const plantsRows = S.plants.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'he')).map(p => {
-      const r = {'שם': p.name, 'שם לטיני': p.latin || '', 'שמות נוספים': p.otherNames || '', 'קטגוריות': (p.categoryIds || []).map(catById).filter(Boolean).map(c => c.name).join(', ')};
+      const r = {'שם': p.name, 'שם לטיני': p.latin || '', 'שמות נוספים': p.otherNames || '', 'קטגוריות': (p.categoryIds || []).filter(catById).map(catPath).join(', ')};
       S.fields.forEach(f => { r[f.label] = fmtVal(f, p.attrs && p.attrs[f.id]); });
       const pr = pp(p.id); r['ספק'] = pr.supplier || '';
       const ss = seasonState(p); r['חודשי שתילה'] = ss ? monthsText(ss.plantMonths) : ''; r['זמין במשתלות'] = ss ? monthsText(ss.availMonths) : '';
@@ -1775,7 +1811,7 @@ async function exportExcel() {
       r['הערות'] = p.notes || ''; r['מספר תמונות'] = (p.images || []).length;
       return r;
     });
-    const priceRows = S.categories.map(c => { const r = {'קטגוריה': c.name, '% רווח': S.pricing.markup && S.pricing.markup[c.id] != null ? S.pricing.markup[c.id] : (S.pricing.defaultMarkup ?? '')};
+    const priceRows = catTree().map(({c}) => { const r = {'קטגוריה': catPath(c.id), '% רווח': S.pricing.markup && S.pricing.markup[c.id] != null ? S.pricing.markup[c.id] : (S.pricing.defaultMarkup ?? '')};
       sizes.forEach(s => { const v = num(S.pricing.cost && S.pricing.cost[c.id] && S.pricing.cost[c.id][s.id]); r['קנייה · ' + s.label] = v ?? ''; r['ללקוח · ' + s.label] = v != null ? roundPrice(v * (1 + markupFor([c.id]) / 100)) : ''; });
       return r; });
     const clientRows = [];
