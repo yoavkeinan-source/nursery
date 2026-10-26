@@ -2556,7 +2556,7 @@ function wireAi(host) {
     say(v ? 'נשמר. סגרו את האפליקציה ופתחו אותה מחדש כדי להפעיל.' : 'החיפוש החכם כובה.'); };
   const t = $('#aiTest', host); if (t) t.onclick = async () => { const st = {set textContent(x) { say(x); }}; st.textContent = 'בודק…';
     try { const r = await sample.json('החזר JSON בלבד: {"ok":true,"plant":"שם של צמח ים תיכוני אחד בעברית"}'); st.textContent = r && r.ok ? `✓ עובד. דוגמה מהמודל: ${r.plant || ''}` : 'התקבלה תשובה לא צפויה.'; }
-    catch (e) { st.textContent = aiErr(e, 'הבדיקה נכשלה: ' + ((e && e.message) || 'שגיאה לא ידועה')); } };
+    catch (e) { const det = String((e && e.message) || '').slice(0, 300); st.textContent = aiErr(e, 'הבדיקה נכשלה.') + (det ? ' פרטים טכניים: ' + det : ''); } };
 }
 function backupPanelHtml() {
   return `<div class="panel stack"><h3 style="font-size:1.3rem">גיבוי מלא</h3>
