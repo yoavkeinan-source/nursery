@@ -473,7 +473,8 @@ const byOrder = (a, b) => (a.order ?? 999) - (b.order ?? 999) || String(a.name |
 const blob = id => (window.assetUrl ? window.assetUrl(id) : '/_blob/' + id);
 const COLORS = ['#2E6B3C','#C2410C','#B4237A','#7C3AED','#0E7490','#A16207','#4D7C0F','#BE123C','#1D4ED8','#57534E'];
 const NO_AREA = 'כללי';
-const AI = window.AI_NAME || 'Claude'; // the assistant behind the smart features
+const AI = window.AI_NAME || 'Claude';
+const APP_VERSION = '27.10.2026-b'; // the assistant behind the smart features
 const CARD_MAX = 8; // details shown on a plant card
 let toastT;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
@@ -1287,7 +1288,10 @@ function openPlant(id) {
     <div>
       <div class="gallery-main">${imgs.length ? `<img id="galImg" src="${esc(blob(imgs[0]))}" alt="${esc(p.name)}, תמונה 1 מתוך ${imgs.length}"><button class="zoom-btn" id="zoomBtn">הגדלה</button>${imgs.length > 1 ? `<button class="gal-nav prev" aria-label="התמונה הקודמת">›</button><button class="gal-nav next" aria-label="התמונה הבאה">‹</button>` : ''}` : placeholder(p)}</div>
       ${imgs.length > 1 ? `<div class="thumbs" role="group" aria-label="תמונות">${imgs.map((im, k) => `<button data-k="${k}" aria-label="תמונה ${k + 1}" aria-current="${k === 0}"><img src="${esc(blob(im))}" alt="" loading="lazy"></button>`).join('')}</div>` : ''}
-      ${!imgs.length && canWrite ? `<p class="hint">אין עדיין תמונות. לחצו "עריכה" כדי להוסיף.</p>` : ''}
+      ${canWrite && assets ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
+        <label class="btn sm" for="pAddCam">📷 צילום תמונה</label><input type="file" id="pAddCam" accept="image/*" capture="environment" class="sr">
+        <label class="btn sm" for="pAddGal">🖼 הוספת תמונות</label><input type="file" id="pAddGal" accept="image/*" multiple class="sr">
+        <span class="hint" id="pAddSt" aria-live="polite">${imgs.length ? '' : 'אין עדיין תמונות.'}</span></div>` : ''}
     </div>
     <div class="stack">
       ${p.latin ? `<div class="latin" style="font-size:1.1em">${esc(p.latin)}</div>` : ''}
@@ -1325,6 +1329,10 @@ function openPlant(id) {
   } else dlg.onkeydown = null;
   if (imgs.length) { $('#galImg').onclick = () => { if (Date.now() - (window.__swipedAt || 0) < 400) return; openViewer(imgs, i, p.name); }; $('#zoomBtn').onclick = () => openViewer(imgs, i, p.name); }
   const eb = $('#editP', dlg); if (eb) eb.onclick = () => openEditor(p.id);
+  const addP = async inp => { const files = [...inp.files]; inp.value = ''; if (!files.length) return; const st = $('#pAddSt', dlg); st.textContent = 'מעלה…';
+    try { await addImagesToPlant(p.id, files); toast(files.length > 1 ? `${files.length} תמונות נוספו` : 'התמונה נוספה'); setTimeout(() => { if (dlg.open) openPlant(p.id); }, 600); }
+    catch (e) { st.textContent = uploadErr(e); } };
+  const pc = $('#pAddCam', dlg); if (pc) pc.onchange = e => addP(e.target); const pgl = $('#pAddGal', dlg); if (pgl) pgl.onchange = e => addP(e.target);
   const fb = $('#favP', dlg); if (fb) fb.onclick = () => { toggleFav(p.id); const on = isFav(p); fb.setAttribute('aria-pressed', String(on)); fb.textContent = on ? '★ במועדפים' : '☆ למועדפים'; };
   const acl = $('#addCl', dlg); if (acl) acl.onchange = () => { $('#addAr').innerHTML = areaOpts(S.clients.find(c => c.id === acl.value)); };
   const ag = $('#addGo', dlg); if (ag) ag.onclick = () => { UI.lastArea = $('#addAr').value; ls.set('lastArea', UI.lastArea); addToClient(p.id, acl.value, $('#addSz').value, Math.max(1, +$('#addQty').value || 1), UI.lastArea, $('#addVar') ? $('#addVar').value : ''); };
@@ -2153,6 +2161,7 @@ function renderSettings(host) {
   $$('[data-brand]', host).forEach(b => b.onclick = () => { S.biz = {...S.biz, accent: b.dataset.brand}; applyBrand(); upsert('meta/business', {accent: b.dataset.brand}); renderView(true); toast('הצבע עודכן'); });
   $$('input[name="themeSel"]', host).forEach(r => r.onchange = () => { theme = r.value; applyTheme(); });
   wireBackup(host); wireAi(host); makeFoldable(host);
+  host.insertAdjacentHTML('beforeend', `<p class="hint" style="text-align:center;margin-top:16px">גרסת האפליקציה: ${APP_VERSION}</p>`);
   $('#bz-name', host).onchange = e => upsert('meta/business', {name: e.target.value.trim()});
   $('#bz-phone', host).onchange = e => upsert('meta/business', {phone: e.target.value.trim()});
   const li = $('#logoIn', host);
@@ -2322,15 +2331,16 @@ function openQuickPhotos() {
           <h3 style="font-size:1.8rem">${esc(p.name)}</h3>${p.latin ? `<div class="latin" style="text-align:center">${esc(p.latin)}</div>` : ''}
           <div class="cats" style="justify-content:center">${catPills(p)}</div>
           ${(() => { const mine = recent.get(p.id) || []; const saved = (p.images || []).filter(id => !mine.some(m => m.id === id)); const all = [...saved.map(id => blob(id)), ...mine.map(m => m.url)];
-            return all.length ? `<div class="gphotos" style="justify-content:center">${all.map(u => `<div class="gp"><img src="${esc(u)}" alt=""></div>`).join('')}</div><span class="hint">לצמח הזה יש ${all.length === 1 ? 'תמונה אחת' : all.length + ' תמונות'}. אפשר להוסיף עוד, או לעבור לצמח הבא.</span>` : ''; })()}
+            return all.length ? `<div class="gphotos" style="justify-content:center">${all.map(u => `<div class="gp"><img src="${esc(u)}" alt=""></div>`).join('')}</div>` : ''; })()}
+          ${stayId === p.id ? `<div class="smart-box" style="margin:0;flex-direction:column;align-items:center;text-align:center" role="status"><b>✓ נשמר. רוצה עוד תמונה של ${esc(p.name)}?</b><span class="hint">הכפתורים למטה מוסיפים עוד תמונות לאותו צמח. כשמסיימים, לוחצים "סיימתי, לצמח הבא".</span></div>` : ''}
           <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
-            <label class="btn primary" for="qoCam" style="min-height:56px;font-size:1.1em">📷 צילום</label><input type="file" id="qoCam" accept="image/*" capture="environment" class="sr">
-            <label class="btn" for="qoGal" style="min-height:56px;font-size:1.1em">🖼 בחירה מהגלריה</label><input type="file" id="qoGal" accept="image/*" multiple class="sr"></div>
+            <label class="btn primary" for="qoCam" style="min-height:56px;font-size:1.1em">📷 ${stayId === p.id ? 'צילום עוד תמונה' : 'צילום'}</label><input type="file" id="qoCam" accept="image/*" capture="environment" class="sr">
+            <label class="btn" for="qoGal" style="min-height:56px;font-size:1.1em">🖼 ${stayId === p.id ? 'עוד מהגלריה' : 'בחירה מהגלריה'}</label><input type="file" id="qoGal" accept="image/*" multiple class="sr"></div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
             <a class="btn clay" id="qoGoogle" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&amp;q=${encodeURIComponent([p.name, p.latin].filter(Boolean).join(' '))}">🔍 חיפוש תמונה בגוגל</a>
             <button type="button" class="btn" id="qoPaste">📋 הדבקת תמונה שהועתקה</button></div>
           <p class="hint" style="margin:0;max-width:440px">בגוגל: לוחצים על התמונה ← לחיצה ארוכה (בטלפון) או לחצן ימני (במחשב) ← <b>העתקת תמונה</b>, וחוזרים לכאן ל<b>הדבקה</b>. במחשב אפשר גם פשוט ללחוץ Ctrl+V. כדאי לבחור תמונות שמותר להשתמש בהן, או תמונות שלך, לפני שמציגים אותן ללקוחות.</p>
-          <div style="display:flex;gap:10px"><button type="button" class="btn ghost" id="qoPrev" ${pos ? '' : 'disabled'}>→ הקודם</button><button type="button" class="btn ${stayId === p.id ? 'primary' : ''}" id="qoSkip">${stayId === p.id ? 'לצמח הבא ←' : 'דילוג ←'}</button></div>
+          <div style="display:flex;gap:10px"><button type="button" class="btn ghost" id="qoPrev" ${pos ? '' : 'disabled'}>→ הקודם</button><button type="button" class="btn ${stayId === p.id ? 'primary' : ''}" id="qoSkip">${stayId === p.id ? 'סיימתי, לצמח הבא ←' : 'דילוג ←'}</button></div>
           <p class="hint" id="qoState" aria-live="polite" style="margin:0">${autoNext ? 'אחרי שהתמונה עולה עוברים אוטומטית לצמח הבא.' : 'אפשר להעלות כמה תמונות שרוצים לצמח הזה, ואז ללחוץ "לצמח הבא".'}</p></div>`
         : `<div class="empty"><h3>${onlyNo ? 'לכל הצמחים כאן כבר יש תמונה 🎉' : 'אין צמחים בקטגוריה הזו'}</h3></div>`}`;
   }
@@ -2839,7 +2849,9 @@ async function importBackup(file, progress) {
     for (const [c, id, d] of all) {
       progress(`מעדכן ${++k} מתוך ${all.length}…`);
       if (c === 'plants') {
-        const cur = plantById(id); if (!cur) continue;
+        const cur = plantById(id);
+        if (!cur) { if (d.name) { await w('plants/' + id, r => r.set({images: [], varieties: [], sizeIds: [], categoryIds: [], attrs: {}, ...d})); n++; } continue; }  // a new plant in an update file
+        if (d.name && d.createdAt && !d.addVarieties && !d.replaceAttrs && !d.addCats) { /* the same new plant imported again: only fill what is missing */ }
         const attrs = {...(cur.attrs || {})}; let changed = false;
         for (const [key, v] of Object.entries(d.attrs || {})) { const old = attrs[key]; if (old == null || old === '' || (Array.isArray(old) && !old.length)) { attrs[key] = v; changed = true; } }
         // replace a value only while it is still the one the earlier import put there (so your own edits are kept)
