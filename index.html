@@ -474,7 +474,7 @@ const blob = id => (window.assetUrl ? window.assetUrl(id) : '/_blob/' + id);
 const COLORS = ['#2E6B3C','#C2410C','#B4237A','#7C3AED','#0E7490','#A16207','#4D7C0F','#BE123C','#1D4ED8','#57534E'];
 const NO_AREA = 'כללי';
 const AI = window.AI_NAME || 'Claude';
-const APP_VERSION = '27.10.2026-b'; // the assistant behind the smart features
+const APP_VERSION = '27.10.2026-c'; // the assistant behind the smart features
 const CARD_MAX = 8; // details shown on a plant card
 let toastT;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
@@ -2856,11 +2856,12 @@ async function importBackup(file, progress) {
         for (const [key, v] of Object.entries(d.attrs || {})) { const old = attrs[key]; if (old == null || old === '' || (Array.isArray(old) && !old.length)) { attrs[key] = v; changed = true; } }
         // replace a value only while it is still the one the earlier import put there (so your own edits are kept)
         for (const [key, ch] of Object.entries(d.replaceAttrs || {})) { if (JSON.stringify(attrs[key]) === JSON.stringify(ch.from)) { attrs[key] = ch.to; changed = true; } }
+        const top = {}; for (const [key, ch] of Object.entries(d.replaceTop || {})) { if ((cur[key] ?? '') === ch.from) { top[key] = ch.to; changed = true; } }
         const cats = [...(cur.categoryIds || [])]; for (const cid of (d.addCats || [])) if (!cats.includes(cid)) { cats.push(cid); changed = true; }
         const others = String(cur.otherNames || '').split(',').map(x => x.trim()).filter(Boolean);
         for (const o of (d.addOtherNames || [])) if (!others.includes(o) && o !== cur.name) { others.push(o); changed = true; }
         const vars = [...(cur.varieties || [])]; for (const v of (d.addVarieties || [])) if (!vars.some(x => x.name === v)) { vars.push({name: v, desc: ''}); changed = true; }
-        const patch = {attrs, categoryIds: cats, otherNames: others.join(', '), varieties: vars, updatedAt: Date.now()};
+        const patch = {attrs, categoryIds: cats, otherNames: others.join(', '), varieties: vars, updatedAt: Date.now(), ...top};
         if (d.latin && !cur.latin) { patch.latin = d.latin; changed = true; }
         if (d.notes && !cur.notes) { patch.notes = d.notes; changed = true; }
         if (!changed) continue;
