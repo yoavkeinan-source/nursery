@@ -156,7 +156,7 @@ dialog::backdrop{background:rgba(10,20,12,.55)}
 .dlg-foot{position:sticky;bottom:0;background:var(--surface);display:flex;gap:10px;justify-content:flex-start;padding:14px 20px;border-top:1px solid var(--line);flex-wrap:wrap}
 .two{display:grid;grid-template-columns:1.1fr 1fr;gap:24px}
 @media (max-width:760px){.two{grid-template-columns:1fr}}
-.gallery-main{aspect-ratio:4/3;max-width:100%;background:var(--surface-2);border-radius:14px;overflow:hidden;position:relative}
+.gallery-main{aspect-ratio:4/3;max-width:100%;background:var(--surface-2);border-radius:14px;overflow:hidden;position:relative;touch-action:pan-y}
 .gallery-main img{width:100%;height:100%;object-fit:contain;background:#0b0f0c}
 .gal-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.55);color:#fff;border:0;width:44px;height:44px;border-radius:50%;cursor:pointer;font-size:1.4rem}
 .gal-nav.prev{inset-inline-start:8px}.gal-nav.next{inset-inline-end:8px}
@@ -354,6 +354,12 @@ label.ai-filled{background:var(--clay-soft)!important}
 .panel.folded .fold-title::after{transform:rotate(90deg)}
 .panel.folded{padding-block:12px}
 .panel.folded > :not(.fold-head), .panel.folded .fold-head > :not(.fold-title){display:none!important}
+.tnav-wrap{position:absolute;top:0;inset-inline:0;aspect-ratio:4/3;pointer-events:none;z-index:2}
+.tnav{pointer-events:auto;position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:1.4rem;line-height:1;cursor:pointer;opacity:.85}
+.tnav.prev{inset-inline-start:6px}.tnav.next{inset-inline-end:6px}
+.tnav:focus-visible{outline:3px solid var(--focus)}
+@media (hover:hover){.tnav{opacity:0;transition:opacity .15s}.card:hover .tnav,.tnav:focus-visible{opacity:.9}}
+.thumb[data-swipe]{touch-action:pan-y}
 .sel-btn{position:absolute;top:8px;inset-inline-start:8px;z-index:3;width:38px;height:38px;border-radius:10px;border:2.5px solid #fff;background:rgba(0,0,0,.35);color:#fff;font-size:1.3rem;font-weight:800;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 .sel-btn[aria-pressed="true"]{background:var(--leaf);border-color:var(--leaf)}
 .card.picked{outline:3px solid var(--leaf);outline-offset:-3px}
@@ -403,6 +409,7 @@ label.ai-filled{background:var(--clay-soft)!important}
       <button type="button" class="btn" id="smartBtn" title="חיפוש בשפה חופשית, למשל: עץ פורח צהוב לשמש מלאה שלא גדל מעל 4 מטר"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8zM19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9z"/></svg>חיפוש חכם</button>
       <button type="button" class="btn" id="photoBtn" hidden title="צלמו או בחרו תמונה של צמח, ו־Claude יזהה אותו"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>זיהוי מתמונה</button>
       <input type="file" id="photoIn" accept="image/*" capture="environment" class="sr" tabindex="-1" aria-hidden="true">
+      <button type="button" class="btn" id="selBtn" aria-pressed="false" title="סימון צמחים ויצירת קובץ PDF מסודר עם תמונות"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 14l2 2 4-4"/></svg>ייצוא ל־PDF</button>
       <button type="button" class="btn" id="photosBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 17l-5-5-8 7"/></svg>תמונות מהירות</button>
       <button type="button" class="btn" id="bulkBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>הוספת רשימה</button>
       <button type="button" class="btn primary" id="addPlantBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>צמח חדש</button>
@@ -415,7 +422,6 @@ label.ai-filled{background:var(--clay-soft)!important}
     <div id="qHint" aria-live="polite"></div>
     <div class="toolbar">
       <span class="count" id="count" aria-live="polite"></span>
-      <button type="button" class="btn sm" id="selBtn" aria-pressed="false" title="סימון צמחים ויצירת קובץ PDF מסודר עם תמונות">☑ בחירה ל־PDF</button>
       <label for="sort" class="muted">מיון</label>
       <div class="view-toggle" role="group" aria-label="תצוגה">
         <button type="button" id="vGrid" aria-label="תצוגת כרטיסים" title="כרטיסים"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></button>
@@ -955,8 +961,9 @@ function renderResults() {
       ${UI.selMode ? `<button class="sel-btn" data-sel="${esc(p.id)}" aria-pressed="${UI.sel.has(p.id)}" aria-label="${UI.sel.has(p.id) ? 'ביטול הבחירה' : 'בחירה'}: ${esc(p.name)}">${UI.sel.has(p.id) ? '✓' : ''}</button>` : ''}
       ${cl && !UI.selMode ? `<button class="btn sm primary quick-add" data-quick="${esc(p.id)}" aria-label="הוספת ${esc(p.name)} לרשימה של ${esc(cl.name)}">+ ללקוח</button>` : ''}
       ${canWrite ? `<button class="fav-btn" data-fav="${esc(p.id)}" aria-pressed="${isFav(p)}" aria-label="${isFav(p) ? 'הסרה מהמועדפים' : 'הוספה למועדפים'}: ${esc(p.name)}">${isFav(p) ? '★' : '☆'}</button>` : ''}
+      ${imgs.length > 1 && UI.layout !== 'list' ? `<div class="tnav-wrap"><button class="tnav prev" data-cnav="${esc(p.id)}" data-d="-1" aria-label="התמונה הקודמת של ${esc(p.name)}">›</button><button class="tnav next" data-cnav="${esc(p.id)}" data-d="1" aria-label="התמונה הבאה של ${esc(p.name)}">‹</button></div>` : ''}
       <button class="open" data-open="${esc(p.id)}" aria-label="${esc(p.name)}, פרטים">
-        <div class="thumb">${imgs.length ? `<img loading="lazy" src="${esc(blob(imgs[0]))}" alt="">` : placeholder(p)}${imgs.length > 1 ? `<span class="imgcount">${imgs.length} תמונות</span>` : ''}${p.example ? '<span class="example">דוגמה</span>' : ''}</div>
+        <div class="thumb" ${imgs.length > 1 ? `data-swipe="${esc(p.id)}"` : ''}>${imgs.length ? `<img loading="lazy" data-cimg="${esc(p.id)}" src="${esc(blob(imgs[(UI.cardImg && UI.cardImg[p.id]) % imgs.length || 0]))}" alt="">` : placeholder(p)}${imgs.length > 1 ? `<span class="imgcount" data-ccount="${esc(p.id)}">${((UI.cardImg && UI.cardImg[p.id]) % imgs.length || 0) + 1}/${imgs.length}</span>` : ''}${p.example ? '<span class="example">דוגמה</span>' : ''}</div>
         <div class="tag">
           <h3>${esc(p.name)}</h3>
           ${p.latin ? `<div class="latin">${esc(p.latin)}</div>` : ''}
@@ -984,6 +991,30 @@ function toggleFav(id) {
   toast(now ? 'נוסף למועדפים' : 'הוסר מהמועדפים');
 }
 $('#results').addEventListener('click', e => { const b = e.target.closest('[data-fav]'); if (b) { e.stopPropagation(); toggleFav(b.dataset.fav); } }, true);
+/* ---------- flip through a plant's photos on its card ---------- */
+function cardImgStep(pid, d) {
+  const p = plantById(pid); const imgs = (p && p.images) || []; if (imgs.length < 2) return;
+  UI.cardImg = UI.cardImg || {}; const k = (((UI.cardImg[pid] || 0) + d) % imgs.length + imgs.length) % imgs.length; UI.cardImg[pid] = k;
+  const im = $(`img[data-cimg="${CSS.escape(pid)}"]`); if (im) im.src = blob(imgs[k]);
+  const c = $(`[data-ccount="${CSS.escape(pid)}"]`); if (c) c.textContent = `${k + 1}/${imgs.length}`;
+}
+/* horizontal swipe on an element; d = +1 for the next photo (swipe toward the start in RTL) */
+function onSwipe(elm, fn) {
+  if (!elm) return; let x0 = null, y0 = 0;
+  elm.addEventListener('pointerdown', e => { x0 = e.clientX; y0 = e.clientY; }, {passive: true});
+  elm.addEventListener('pointerup', e => { if (x0 == null) return; const dx = e.clientX - x0, dy = e.clientY - y0; x0 = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) { window.__swipedAt = Date.now(); fn(dx > 0 ? 1 : -1, e); } });
+}
+$('#results').addEventListener('click', e => {
+  const b = e.target.closest('[data-cnav]'); if (b) { e.stopPropagation(); e.preventDefault(); cardImgStep(b.dataset.cnav, +b.dataset.d); return; }
+  if (Date.now() - (window.__swipedAt || 0) < 400 && e.target.closest('.thumb')) { e.stopPropagation(); e.preventDefault(); }
+}, true);
+(() => { let x0 = null, y0 = 0, pid = null;
+  const r = $('#results');
+  r.addEventListener('pointerdown', e => { const t = e.target.closest('[data-swipe]'); pid = t ? t.dataset.swipe : null; x0 = e.clientX; y0 = e.clientY; }, {passive: true});
+  r.addEventListener('pointerup', e => { if (!pid || x0 == null) return; const dx = e.clientX - x0, dy = e.clientY - y0; const id = pid; pid = null; x0 = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) { window.__swipedAt = Date.now(); cardImgStep(id, dx > 0 ? 1 : -1); } });
+})();
 /* ---------- choose plants for a PDF ---------- */
 const saveSel = () => ls.set('pdfSel', [...UI.sel]);
 function toggleSel(id) { UI.sel.has(id) ? UI.sel.delete(id) : UI.sel.add(id); saveSel(); renderResults(); }
@@ -1028,14 +1059,15 @@ function openSelPdf() {
         <label><input type="checkbox" id="spAll">כל המאפיינים</label>
         <label><input type="checkbox" id="spNotes">הערות</label>
         ${canWrite ? '<label><input type="checkbox" id="spPrice">מחיר החל מ־</label>' : ''}</div></div>
-      <div class="field"><label for="spPer">תמונות לכל צמח</label><select class="inp" id="spPer" style="width:auto"><option value="1">תמונה אחת</option><option value="2">עד 2</option><option value="3">עד 3</option><option value="0">בלי תמונות</option></select></div>
+      <div class="field"><label for="spPer">תמונות לכל צמח</label><select class="inp" id="spPer" style="width:auto"><option value="1">תמונה אחת</option><option value="2">עד 2</option><option value="3">עד 3</option><option value="4">עד 4</option><option value="6">עד 6</option><option value="99">כל התמונות</option><option value="0">בלי תמונות</option></select>
+        <span class="hint">לקובץ מפורט עם הרבה תמונות, בחרו "עמוד מלא לכל צמח" ו"כל התמונות". תמונות נוספות ממשיכות לעמוד הבא כשצריך.</span></div>
       <details class="filters" style="margin:0"><summary>בחירת התמונות לכל צמח</summary><div class="stack" id="spImgs" style="padding:0 16px 16px;gap:6px">${imgsHtml()}</div></details>
       <p class="hint" id="spState" aria-live="polite" style="margin:0"></p></div>
     <div class="dlg-foot"><button class="btn primary" id="spGo">יצירת PDF</button><button class="btn" data-close>ביטול</button></div>`);
   const refreshImgs = () => { $('#spImgs').innerHTML = imgsHtml(); };
   $('#spPer').onchange = e => { perPlant = +e.target.value; plants.forEach(p => pick.set(p.id, (p.images || []).slice(0, perPlant))); refreshImgs(); };
   $('#spImgs').onclick = e => { const b = e.target.closest('[data-pi]'); if (!b) return; const cur = pick.get(b.dataset.pp); const i = cur.indexOf(b.dataset.pi);
-    if (i >= 0) cur.splice(i, 1); else { cur.push(b.dataset.pi); const lim = perPlant || 3; while (cur.length > Math.max(lim, 1)) cur.shift(); if (!perPlant) { perPlant = 1; $('#spPer').value = '1'; } }
+    if (i >= 0) cur.splice(i, 1); else { if (!perPlant) { perPlant = 1; $('#spPer').value = '1'; } cur.push(b.dataset.pi); const lim = perPlant >= 99 ? Infinity : perPlant; if (cur.length > lim) { perPlant = cur.length; const o = [...$('#spPer').options].find(x => +x.value >= perPlant && +x.value !== 0); $('#spPer').value = o ? o.value : '99'; perPlant = +$('#spPer').value; } }
     refreshImgs(); };
   $('#spGo').onclick = async () => {
     const go = $('#spGo'), st = $('#spState'); go.disabled = true;
@@ -1046,7 +1078,7 @@ function openSelPdf() {
 }
 async function makeSelPdf(plants, opt, progress) {
   const B = brandHex();
-  const imgsOf = p => opt.per ? (opt.pick.get(p.id) || []).slice(0, opt.per || 3) : [];
+  const imgsOf = p => opt.per ? (opt.pick.get(p.id) || []).slice(0, opt.per >= 99 ? 999 : opt.per) : [];
   const allImgs = plants.flatMap(imgsOf).concat(S.biz.logoId ? [S.biz.logoId] : []);
   const cardFields = S.fields.filter(f => f.card).sort(byOrder).slice(0, CARD_MAX);
   const factsOf = p => { const fs = opt.all ? S.fields.slice().sort(byOrder) : opt.facts ? cardFields : []; return fs.map(f => { const v = fmtVal(f, p.attrs && p.attrs[f.id]); return v ? [f.label, v] : null; }).filter(Boolean); };
@@ -1060,19 +1092,21 @@ async function makeSelPdf(plants, opt, progress) {
     const blocks = [pdfHeader(el), el(`<div style="margin-top:6px;display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:24px;font-weight:800">${esc(opt.title)}</div><div style="color:#4A5A4E">${plants.length} צמחים</div></div>`)];
     if (opt.layout === 'rows') plants.forEach(p => { const ims = imgsOf(p);
       blocks.push(el(`<div style="display:flex;gap:12px;align-items:center;border-bottom:1px solid #DCE3D8;padding:8px 0">
-        ${ims.length ? `<div style="display:flex;gap:6px">${ims.map(id => img(id, 96, 74)).join('')}</div>` : opt.per ? ph(p, 96, 74) : ''}
+        ${ims.length ? `<div style="display:flex;gap:6px">${ims.slice(0, 4).map(id => img(id, 96, 74)).join('')}</div>` : opt.per ? ph(p, 96, 74) : ''}
         <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:17px">${esc(p.name)}</div>${latin(p)}${inline(p) ? `<div style="color:#4A5A4E;font-size:13px">${inline(p)}</div>` : ''}${notes(p)}${priceOfP(p)}</div></div>`)); });
     else if (opt.layout === 'page') plants.forEach((p, k) => { const ims = imgsOf(p); const fs = factsOf(p);
       blocks.push(el(`<div style="display:flex;flex-direction:column;gap:10px;${k ? 'margin-top:4px;' : ''}border-top:3px solid ${B};padding-top:12px">
         <div><div style="font-family:'Suez One',serif;font-size:30px;color:${B}">${esc(p.name)}</div>${latin(p, 16)}<div style="color:#4A5A4E;font-size:13px">${(p.categoryIds || []).filter(catById).map(catPath).map(esc).join(' · ')}</div></div>
-        ${ims.length ? img(ims[0], 698, ims.length > 1 ? 330 : 400, 12) : opt.per ? ph(p, 698, 200, 12) : ''}
-        ${ims.length > 1 ? `<div style="display:flex;gap:10px">${ims.slice(1).map(id => img(id, 344, 200, 10)).join('')}</div>` : ''}
+        ${ims.length ? img(ims[0], 698, ims.length > 1 ? 330 : 400, 12) : opt.per ? ph(p, 698, 200, 12) : ''}</div>`));
+      const extra = ims.slice(1);
+      for (let j = 0; j < extra.length; j += 2) blocks.push(el(`<div style="display:flex;gap:10px">${extra.slice(j, j + 2).map(id => img(id, 344, 230, 10)).join('')}</div>`));
+      blocks.push(el(`<div style="display:flex;flex-direction:column;gap:8px">
         ${fs.length ? `<div style="display:grid;grid-template-columns:1fr 1fr;column-gap:18px;font-size:13.5px">${fs.map(([l, v]) => `<div style="display:flex;gap:8px;padding:4px 2px;border-bottom:1px solid #DCE3D8"><span style="color:#4A5A4E;font-weight:700;flex:none;width:110px">${esc(l)}</span><span>${esc(v)}</span></div>`).join('')}</div>` : ''}
         ${notes(p)}${priceOfP(p)}</div>`));
       blocks.push(el('<div data-break="1"></div>')); });
     else for (let i = 0; i < plants.length; i += 3) blocks.push(el(`<div style="display:flex;gap:14px;align-items:flex-start">${plants.slice(i, i + 3).map(p => { const ims = imgsOf(p);
       return `<div style="width:222px;border:1px solid #DCE3D8;border-radius:12px;overflow:hidden;background:#fff">${ims.length ? img(ims[0], 222, 166, 0) : opt.per ? ph(p, 222, 166, 0) : ''}
-        ${ims.length > 1 ? `<div style="display:flex;gap:4px;padding:4px 4px 0">${ims.slice(1).map(id => img(id, ims.length > 2 ? 105 : 214, 70, 6)).join('')}</div>` : ''}
+        ${ims.length > 1 ? `<div style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 4px 0">${ims.slice(1).map(id => img(id, ims.length === 2 ? 214 : 69, ims.length === 2 ? 110 : 52, 6)).join('')}</div>` : ''}
         <div style="padding:8px 10px"><div style="font-weight:800;font-size:16px">${esc(p.name)}</div>${latin(p, 12.5)}${inline(p) ? `<div style="color:#4A5A4E;font-size:12px">${inline(p)}</div>` : ''}${notes(p)}${priceOfP(p)}</div></div>`; }).join('')}</div>`));
     return blocks;
   }, `${opt.title}.pdf`, progress, allImgs);
@@ -1287,8 +1321,9 @@ function openPlant(id) {
     $('.gal-nav.prev', dlg).onclick = () => setImg(i - 1); $('.gal-nav.next', dlg).onclick = () => setImg(i + 1);
     $('.thumbs', dlg).onclick = e => { const b = e.target.closest('[data-k]'); if (b) setImg(+b.dataset.k); };
     dlg.onkeydown = e => { if (e.target.matches('input,select')) return; if (e.key === 'ArrowLeft') setImg(i + 1); if (e.key === 'ArrowRight') setImg(i - 1); };
+    onSwipe($('.gallery-main', dlg), d => setImg(i + d));
   } else dlg.onkeydown = null;
-  if (imgs.length) { $('#galImg').onclick = () => openViewer(imgs, i, p.name); $('#zoomBtn').onclick = () => openViewer(imgs, i, p.name); }
+  if (imgs.length) { $('#galImg').onclick = () => { if (Date.now() - (window.__swipedAt || 0) < 400) return; openViewer(imgs, i, p.name); }; $('#zoomBtn').onclick = () => openViewer(imgs, i, p.name); }
   const eb = $('#editP', dlg); if (eb) eb.onclick = () => openEditor(p.id);
   const fb = $('#favP', dlg); if (fb) fb.onclick = () => { toggleFav(p.id); const on = isFav(p); fb.setAttribute('aria-pressed', String(on)); fb.textContent = on ? '★ במועדפים' : '☆ למועדפים'; };
   const acl = $('#addCl', dlg); if (acl) acl.onchange = () => { $('#addAr').innerHTML = areaOpts(S.clients.find(c => c.id === acl.value)); };
@@ -2181,12 +2216,12 @@ const fieldSchema = () => S.fields.map(f => `- "${f.id}": ${f.label}${f.unit ? '
 
 /* ---------- bulk add from a list of names ---------- */
 /* ---------- quick photos: many photos at once, or plant after plant ---------- */
-async function addImagesToPlant(pid, blobs) {
+async function addImagesToPlant(pid, blobs, returnIds = false) {
   const ids = [];
   for (const f of blobs) { const b = await toJpeg(f); const r = await assets.upload(b, b.type ? undefined : {type: 'image/jpeg'}); ids.push(r.id); }
-  if (!ids.length) return 0;
+  if (!ids.length) return returnIds ? [] : 0;
   await w('plants/' + pid, async r => { const snap = await r.get(); const cur = (snap.exists && snap.data().images) || []; return r.update({images: [...cur, ...ids], updatedAt: Date.now()}); });
-  return ids.length;
+  return returnIds ? ids : ids.length;
 }
 function matchPlantByFilename(fname) {
   const base = norm(String(fname).replace(/\.[a-z0-9]+$/i, '').replace(/[_\d]+/g, ' ')); if (base.replace(/\s/g, '').length < 2) return null;
@@ -2275,18 +2310,19 @@ function openQuickPhotos() {
     };
   }
   /* --- plant after plant --- */
-  let oneCat = 'all', onlyNo = true, pos = 0, busy = false; const doneIds = new Set();
-  const queue = () => S.plants.filter(p => (oneCat === 'all' || plantInCat(p, oneCat)) && (!onlyNo || (!(p.images || []).length && !doneIds.has(p.id)))).sort((a, b) => String(a.name).localeCompare(String(b.name), 'he'));
+  let oneCat = 'all', onlyNo = true, pos = 0, busy = false, stayId = null, autoNext = !!ls.get('qoAuto', false); const doneIds = new Set(); const recent = new Map();
+  const queue = () => S.plants.filter(p => (oneCat === 'all' || plantInCat(p, oneCat)) && (!onlyNo || p.id === stayId || (!(p.images || []).length && !doneIds.has(p.id)))).sort((a, b) => String(a.name).localeCompare(String(b.name), 'he'));
   function oneHtml() {
     const q = queue(); if (pos >= q.length) pos = Math.max(0, q.length - 1); const p = q[pos];
     return `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
         <div class="field" style="flex:1 1 200px"><label for="qoCat">קטגוריה</label><select class="inp" id="qoCat"><option value="all">כל הצמחים</option>${catTree().map(({c, depth}) => `<option value="${esc(c.id)}" ${oneCat === c.id ? 'selected' : ''}>${'— '.repeat(depth)}${esc(c.name)}</option>`).join('')}</select></div>
-        <div class="checks"><label><input type="checkbox" id="qoNo" ${onlyNo ? 'checked' : ''}>רק צמחים בלי תמונה</label></div></div>
+        <div class="checks"><label><input type="checkbox" id="qoNo" ${onlyNo ? 'checked' : ''}>רק צמחים בלי תמונה</label><label><input type="checkbox" id="qoAuto" ${autoNext ? 'checked' : ''}>מעבר אוטומטי לצמח הבא אחרי העלאה</label></div></div>
       ${p ? `<div class="panel" style="display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center">
           <span class="hint">${pos + 1} מתוך ${q.length}</span>
           <h3 style="font-size:1.8rem">${esc(p.name)}</h3>${p.latin ? `<div class="latin" style="text-align:center">${esc(p.latin)}</div>` : ''}
           <div class="cats" style="justify-content:center">${catPills(p)}</div>
-          ${(p.images || []).length ? `<img src="${esc(blob(p.images[0]))}" alt="" class="mini" style="width:120px;height:90px"><span class="hint">יש כבר ${(p.images || []).length} תמונות</span>` : ''}
+          ${(() => { const mine = recent.get(p.id) || []; const saved = (p.images || []).filter(id => !mine.some(m => m.id === id)); const all = [...saved.map(id => blob(id)), ...mine.map(m => m.url)];
+            return all.length ? `<div class="gphotos" style="justify-content:center">${all.map(u => `<div class="gp"><img src="${esc(u)}" alt=""></div>`).join('')}</div><span class="hint">לצמח הזה יש ${all.length === 1 ? 'תמונה אחת' : all.length + ' תמונות'}. אפשר להוסיף עוד, או לעבור לצמח הבא.</span>` : ''; })()}
           <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
             <label class="btn primary" for="qoCam" style="min-height:56px;font-size:1.1em">📷 צילום</label><input type="file" id="qoCam" accept="image/*" capture="environment" class="sr">
             <label class="btn" for="qoGal" style="min-height:56px;font-size:1.1em">🖼 בחירה מהגלריה</label><input type="file" id="qoGal" accept="image/*" multiple class="sr"></div>
@@ -2294,22 +2330,26 @@ function openQuickPhotos() {
             <a class="btn clay" id="qoGoogle" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&amp;q=${encodeURIComponent([p.name, p.latin].filter(Boolean).join(' '))}">🔍 חיפוש תמונה בגוגל</a>
             <button type="button" class="btn" id="qoPaste">📋 הדבקת תמונה שהועתקה</button></div>
           <p class="hint" style="margin:0;max-width:440px">בגוגל: לוחצים על התמונה ← לחיצה ארוכה (בטלפון) או לחצן ימני (במחשב) ← <b>העתקת תמונה</b>, וחוזרים לכאן ל<b>הדבקה</b>. במחשב אפשר גם פשוט ללחוץ Ctrl+V. כדאי לבחור תמונות שמותר להשתמש בהן, או תמונות שלך, לפני שמציגים אותן ללקוחות.</p>
-          <div style="display:flex;gap:10px"><button type="button" class="btn ghost" id="qoPrev" ${pos ? '' : 'disabled'}>→ הקודם</button><button type="button" class="btn" id="qoSkip">דילוג ←</button></div>
-          <p class="hint" id="qoState" aria-live="polite" style="margin:0">אחרי שהתמונה עולה עוברים אוטומטית לצמח הבא.</p></div>`
+          <div style="display:flex;gap:10px"><button type="button" class="btn ghost" id="qoPrev" ${pos ? '' : 'disabled'}>→ הקודם</button><button type="button" class="btn ${stayId === p.id ? 'primary' : ''}" id="qoSkip">${stayId === p.id ? 'לצמח הבא ←' : 'דילוג ←'}</button></div>
+          <p class="hint" id="qoState" aria-live="polite" style="margin:0">${autoNext ? 'אחרי שהתמונה עולה עוברים אוטומטית לצמח הבא.' : 'אפשר להעלות כמה תמונות שרוצים לצמח הזה, ואז ללחוץ "לצמח הבא".'}</p></div>`
         : `<div class="empty"><h3>${onlyNo ? 'לכל הצמחים כאן כבר יש תמונה 🎉' : 'אין צמחים בקטגוריה הזו'}</h3></div>`}`;
   }
   function wireOne() {
     $('#qoCat', dlg).onchange = e => { oneCat = e.target.value; pos = 0; render(); };
-    $('#qoNo', dlg).onchange = e => { onlyNo = e.target.checked; pos = 0; render(); };
+    $('#qoNo', dlg).onchange = e => { onlyNo = e.target.checked; pos = 0; stayId = null; render(); };
+    $('#qoAuto', dlg).onchange = e => { autoNext = e.target.checked; ls.set('qoAuto', autoNext); render(); };
     const q = queue(); const p = q[pos]; if (!p) return;
-    const pv = $('#qoPrev', dlg); if (pv) pv.onclick = () => { pos = Math.max(0, pos - 1); render(); };
-    $('#qoSkip', dlg).onclick = () => { pos = Math.min(q.length - 1, pos + 1); if (pos === q.length - 1 && q.length) toast('זה הצמח האחרון ברשימה'); render(); };
+    const leave = () => { if (stayId) { const wasStay = stayId; stayId = null; const nq = queue(); const i = nq.findIndex(x => x.id === wasStay); return i < 0; } return false; };
+    const pv = $('#qoPrev', dlg); if (pv) pv.onclick = () => { const gone = leave(); pos = Math.max(0, pos - (gone ? 1 : 1)); render(); };
+    $('#qoSkip', dlg).onclick = () => { const gone = leave(); if (!gone) pos = pos + 1; const nq = queue(); if (pos >= nq.length) { pos = Math.max(0, nq.length - 1); toast('זה הצמח האחרון ברשימה'); } render(); };
     const handle = async inp => {
       const files = [...inp.files]; inp.value = ''; if (!files.length || busy) return; busy = true;
       const st = $('#qoState', dlg); st.textContent = `מעלה ${files.length > 1 ? files.length + ' תמונות' : 'תמונה'}…`;
-      try { await addImagesToPlant(p.id, files); toast(`התמונה נשמרה ל${p.name}`);
-        if (!onlyNo) pos = Math.min(pos + 1, Math.max(0, q.length - 1)); // with "only without photo" the plant leaves the list by itself
+      try { const ids = await addImagesToPlant(p.id, files, true); toast(files.length > 1 ? `${files.length} תמונות נשמרו ל${p.name}` : `התמונה נשמרה ל${p.name}`);
+        recent.set(p.id, [...(recent.get(p.id) || []), ...ids.map((id, k) => ({id, url: URL.createObjectURL(files[k])}))]);
         doneIds.add(p.id);
+        if (autoNext) { stayId = null; if (!onlyNo) pos = Math.min(pos + 1, Math.max(0, q.length - 1)); } // with "only without photo" the plant leaves the list by itself
+        else stayId = p.id;
       } catch (e) { st.textContent = uploadErr(e); busy = false; return; }
       busy = false; render();
     };
