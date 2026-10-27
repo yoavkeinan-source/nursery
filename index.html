@@ -474,7 +474,7 @@ const blob = id => (window.assetUrl ? window.assetUrl(id) : '/_blob/' + id);
 const COLORS = ['#2E6B3C','#C2410C','#B4237A','#7C3AED','#0E7490','#A16207','#4D7C0F','#BE123C','#1D4ED8','#57534E'];
 const NO_AREA = 'כללי';
 const AI = window.AI_NAME || 'Claude';
-const APP_VERSION = '27.10.2026-d'; // the assistant behind the smart features
+const APP_VERSION = '27.10.2026-e'; // the assistant behind the smart features
 const CARD_MAX = 8; // details shown on a plant card
 let toastT;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
@@ -2841,6 +2841,19 @@ async function importBackup(file, progress) {
     }
   }
   const mapImg = id => idMap[id] || (imgs.length ? null : id);
+  UI.lastImportRemove = data.mode === 'remove';
+  if (data.mode === 'remove') {
+    /* removal file: deletes the listed plants, except any you have worked on (photo, own price, favourite, client list) */
+    const ids = (data.remove && data.remove.plants) || [];
+    const touched = p => (p.images || []).length || usageCount(p.id) || (() => { const r = pp(p.id); return r.fav || Object.values(r.cost || {}).some(v => v != null && v !== '') || Object.values(r.sale || {}).some(v => v != null && v !== '') || num(r.markup) != null || (r.supplier || '').trim() || (r.internalNotes || '').trim() && !/^לא נמצא/.test(r.internalNotes); })();
+    const found = ids.map(plantById).filter(Boolean); const keep = found.filter(touched); const del = found.filter(p => !touched(p));
+    if (!del.length) return 0;
+    const ok = await confirmBox('הסרת צמחים מהקטלוג', `יימחקו ${del.length} צמחים מהייבוא המלא של מלצר שעוד לא עבדת איתם.${keep.length ? ` ${keep.length} צמחים נשארים, כי הוספת להם תמונה, מחיר, מועדף או לקוח.` : ''} כדאי להוריד גיבוי לפני כן. להמשיך?`, `מחיקת ${del.length} צמחים`);
+    if (!ok) throw new Error('cancelled');
+    let k = 0;
+    for (const p of del) { progress(`מוחק ${++k} מתוך ${del.length}…`); await w('plants/' + p.id, r => r.delete()); if (S.plantPricing.some(x => x.id === p.id)) await w('plantPricing/' + p.id, r => r.delete()); }
+    return del.length;
+  }
   if (data.mode === 'merge') {
     /* update file: adds missing details to existing plants without touching photos, prices or anything already filled in */
     const all = [];
@@ -2928,8 +2941,8 @@ function wireBackup(host) {
   const inp = $('#bkIn', host);
   if (inp) inp.onchange = async () => { const f = inp.files[0]; inp.value = ''; if (!f) return;
     if (!await confirmBox('שחזור מגיבוי', `לייבא את "${f.name}"? נתונים עם אותו מזהה יוחלפו בנתונים מהקובץ.`, 'ייבוא')) return;
-    try { const n = await importBackup(f, t => st.textContent = t); st.textContent = `יובאו ${n} פריטים.`; toast('השחזור הסתיים'); }
-    catch (e) { st.textContent = e && e.message === 'format' ? 'הקובץ אינו קובץ גיבוי של הקטלוג.' : 'השחזור נכשל באמצע. אפשר להריץ אותו שוב.'; } };
+    try { const n = await importBackup(f, t => st.textContent = t); st.textContent = UI.lastImportRemove ? `נמחקו ${n} צמחים.` : `יובאו ${n} פריטים.`; toast(UI.lastImportRemove ? 'המחיקה הסתיימה' : 'השחזור הסתיים'); }
+    catch (e) { st.textContent = e && e.message === 'cancelled' ? 'בוטל. לא נמחק דבר.' : e && e.message === 'format' ? 'הקובץ אינו קובץ גיבוי של הקטלוג.' : 'השחזור נכשל באמצע. אפשר להריץ אותו שוב.'; } };
 }
 
 /* ---------- boot ---------- */
