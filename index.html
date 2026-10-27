@@ -474,7 +474,7 @@ const blob = id => (window.assetUrl ? window.assetUrl(id) : '/_blob/' + id);
 const COLORS = ['#2E6B3C','#C2410C','#B4237A','#7C3AED','#0E7490','#A16207','#4D7C0F','#BE123C','#1D4ED8','#57534E'];
 const NO_AREA = 'כללי';
 const AI = window.AI_NAME || 'Claude';
-const APP_VERSION = '27.10.2026-e'; // the assistant behind the smart features
+const APP_VERSION = '27.10.2026-f'; // the assistant behind the smart features
 const CARD_MAX = 8; // details shown on a plant card
 let toastT;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
@@ -2845,7 +2845,7 @@ async function importBackup(file, progress) {
   if (data.mode === 'remove') {
     /* removal file: deletes the listed plants, except any you have worked on (photo, own price, favourite, client list) */
     const ids = (data.remove && data.remove.plants) || [];
-    const touched = p => (p.images || []).length || usageCount(p.id) || (() => { const r = pp(p.id); return r.fav || Object.values(r.cost || {}).some(v => v != null && v !== '') || Object.values(r.sale || {}).some(v => v != null && v !== '') || num(r.markup) != null || (r.supplier || '').trim() || (r.internalNotes || '').trim() && !/^לא נמצא/.test(r.internalNotes); })();
+    const touched = p => p.clean || (p.images || []).length || usageCount(p.id) || (() => { const r = pp(p.id); return r.fav || Object.values(r.cost || {}).some(v => v != null && v !== '') || Object.values(r.sale || {}).some(v => v != null && v !== '') || num(r.markup) != null || (r.supplier || '').trim() || (r.internalNotes || '').trim() && !/^לא נמצא/.test(r.internalNotes); })();
     const found = ids.map(plantById).filter(Boolean); const keep = found.filter(touched); const del = found.filter(p => !touched(p));
     if (!del.length) return 0;
     const ok = await confirmBox('הסרת צמחים מהקטלוג', `יימחקו ${del.length} צמחים מהייבוא המלא של מלצר שעוד לא עבדת איתם.${keep.length ? ` ${keep.length} צמחים נשארים, כי הוספת להם תמונה, מחיר, מועדף או לקוח.` : ''} כדאי להוריד גיבוי לפני כן. להמשיך?`, `מחיקת ${del.length} צמחים`);
@@ -2863,8 +2863,14 @@ async function importBackup(file, progress) {
       progress(`מעדכן ${++k} מתוך ${all.length}…`);
       if (c === 'plants') {
         const cur = plantById(id);
-        if (!cur) { if (d.name) { await w('plants/' + id, r => r.set({images: [], varieties: [], sizeIds: [], categoryIds: [], attrs: {}, ...d})); n++; } continue; }  // a new plant in an update file
+        if (!cur) { if (d.name) { const {rewrite, addCats, ...nd} = d; if (rewrite) nd.clean = true; if (addCats) nd.categoryIds = [...new Set([...(nd.categoryIds || []), ...addCats])]; await w('plants/' + id, r => r.set({images: [], varieties: [], sizeIds: [], categoryIds: [], attrs: {}, ...nd})); n++; } continue; }  // a new plant in an update file
         if (d.name && d.createdAt && !d.addVarieties && !d.replaceAttrs && !d.addCats) { /* the same new plant imported again: only fill what is missing */ }
+        if (d.rewrite) {
+          /* clean rewrite: replace the plant's details with new ones, keep its photos, sizes and prices */
+          const cats = [...new Set([...(d.categoryIds || []), ...(d.addCats || [])])];
+          const {rewrite, createdAt, images, sizeIds, addCats, ...rest} = d;
+          await w('plants/' + id, r => r.update({...rest, categoryIds: cats, clean: true, updatedAt: Date.now()})); n++; continue;
+        }
         const attrs = {...(cur.attrs || {})}; let changed = false;
         for (const [key, v] of Object.entries(d.attrs || {})) { const old = attrs[key]; if (old == null || old === '' || (Array.isArray(old) && !old.length)) { attrs[key] = v; changed = true; } }
         // replace a value only while it is still the one the earlier import put there (so your own edits are kept)
