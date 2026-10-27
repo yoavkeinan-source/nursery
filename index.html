@@ -474,7 +474,7 @@ const blob = id => (window.assetUrl ? window.assetUrl(id) : '/_blob/' + id);
 const COLORS = ['#2E6B3C','#C2410C','#B4237A','#7C3AED','#0E7490','#A16207','#4D7C0F','#BE123C','#1D4ED8','#57534E'];
 const NO_AREA = 'כללי';
 const AI = window.AI_NAME || 'Claude';
-const APP_VERSION = '27.10.2026-c'; // the assistant behind the smart features
+const APP_VERSION = '27.10.2026-d'; // the assistant behind the smart features
 const CARD_MAX = 8; // details shown on a plant card
 let toastT;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
@@ -2122,7 +2122,7 @@ function renderSettings(host) {
         <button class="btn primary">הוספת קטגוריה</button></form>
     </div>
     <div class="panel stack">
-      <div><h3 style="font-size:1.3rem">מאפיינים של צמח</h3><p class="hint" style="margin:4px 0 0">השדות שממלאים לכל צמח, מסודרים בקבוצות כמו בקטלוג של משתלת מלצר. כל מאפיין נכלל בחיפוש. מאפיינים מסוג בחירה וכן/לא מופיעים גם כמסנן בקטלוג. סמנו "בכרטיס" כדי להציג אותם על כרטיס הצמח (עד ${CARD_MAX}). בטלפון, בתצוגת שני כרטיסים בשורה, הם מופיעים בתצוגת רשימה ובחלון הצמח.</p></div>
+      <div><h3 style="font-size:1.3rem">מאפיינים של צמח</h3><p class="hint" style="margin:4px 0 0">השדות שממלאים לכל צמח, מסודרים בקבוצות. כל מאפיין נכלל בחיפוש. מאפיינים מסוג בחירה וכן/לא מופיעים גם כמסנן בקטלוג. סמנו "בכרטיס" כדי להציג אותם על כרטיס הצמח (עד ${CARD_MAX}). בטלפון, בתצוגת שני כרטיסים בשורה, הם מופיעים בתצוגת רשימה ובחלון הצמח.</p></div>
       <div>${S.fields.map((f, k) => `<div class="list-row" style="align-items:flex-end">
         <div class="field" style="flex:1 1 160px"><label for="fl-${esc(f.id)}">שם המאפיין</label><input class="inp" id="fl-${esc(f.id)}" data-fl="${esc(f.id)}" value="${esc(f.label)}"></div>
         <div class="field" style="flex:0 1 170px"><label for="ft-${esc(f.id)}">סוג</label><select class="inp" id="ft-${esc(f.id)}" data-ft="${esc(f.id)}">${Object.entries(TYPES).map(([t, l]) => `<option value="${t}" ${f.type === t ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
