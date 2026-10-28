@@ -344,6 +344,7 @@ label.ai-filled{background:var(--clay-soft)!important}
 .gphotos .gp button.v{all:unset;cursor:zoom-in;display:block;width:100%;height:100%}
 .gphotos .gp img{width:100%;height:100%;object-fit:cover;display:block}
 .gphotos .gp .x{position:absolute;top:3px;inset-inline-end:3px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;cursor:pointer}
+.qo-nav{display:flex;gap:10px;align-items:center;justify-content:space-between;width:100%;flex-wrap:wrap}
 .toast-act{margin-inline-start:12px;background:transparent;color:inherit;border:2px solid currentColor;border-radius:8px;padding:4px 12px;font:inherit;font-weight:800;cursor:pointer;min-height:36px}
 .gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-bottom:22px}@media (max-width:560px){.gal-grid{grid-template-columns:1fr 1fr;gap:10px}.gal-meta{padding:8px 10px}}
 .ba-pair img{max-height:46vh}
@@ -497,7 +498,7 @@ const blob = id => (window.assetUrl ? window.assetUrl(id) : '/_blob/' + id);
 const COLORS = ['#2E6B3C','#C2410C','#B4237A','#7C3AED','#0E7490','#A16207','#4D7C0F','#BE123C','#1D4ED8','#57534E'];
 const NO_AREA = 'כללי';
 const AI = window.AI_NAME || 'Claude';
-const APP_VERSION = '28.10.2026-a'; // the assistant behind the smart features
+const APP_VERSION = '28.10.2026-b'; // the assistant behind the smart features
 const CARD_MAX = 8; // details shown on a plant card
 let toastT; const toastEl = document.getElementById('toast');
 function toast(msg, action) { const t = toastEl; let top = document.body; try { if (dlg.open) top = dlg; } catch {} if (t.parentNode !== top) top.appendChild(t); t.textContent = msg; if (action) { const b = document.createElement('button'); b.type = 'button'; b.className = 'toast-act'; b.textContent = action.label; b.onclick = () => { t.hidden = true; clearTimeout(toastT); action.fn(); }; t.append(' ', b); } t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, action ? 9000 : 3000); }
@@ -2499,11 +2500,13 @@ function openQuickPhotos() {
         <div class="field" style="flex:1 1 200px"><label for="qoCat">קטגוריה</label><select class="inp" id="qoCat"><option value="all">כל הצמחים</option>${catTree().map(({c, depth}) => `<option value="${esc(c.id)}" ${oneCat === c.id ? 'selected' : ''}>${'— '.repeat(depth)}${esc(c.name)}</option>`).join('')}</select></div>
         <div class="checks"><label><input type="checkbox" id="qoNo" ${onlyNo ? 'checked' : ''}>רק צמחים בלי תמונה</label><label><input type="checkbox" id="qoAuto" ${autoNext ? 'checked' : ''}>מעבר אוטומטי לצמח הבא אחרי העלאה</label></div></div>
       ${p ? `<div class="panel" style="display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center">
-          <span class="hint">${pos + 1} מתוך ${q.length}</span>
+          <div class="qo-nav"><button type="button" class="btn ghost" id="qoPrev" ${pos ? '' : 'disabled'}>→ הקודם</button>
+            <span class="hint" aria-live="polite">${pos + 1} מתוך ${q.length}</span>
+            <button type="button" class="btn ${stayId === p.id ? 'primary' : ''}" id="qoSkip" style="min-height:48px">${stayId === p.id ? 'סיימתי, לצמח הבא ←' : 'דילוג לצמח הבא ←'}</button></div>
           <h3 style="font-size:1.8rem">${esc(p.name)}</h3>${p.latin ? `<div class="latin" style="text-align:center">${esc(p.latin)}</div>` : ''}
           <div class="cats" style="justify-content:center">${catPills(p)}</div>
-          ${(() => { const mine = recent.get(p.id) || []; const saved = (p.images || []).filter(id => !mine.some(m => m.id === id)); const all = [...saved.map(id => blob(id)), ...mine.map(m => m.url)];
-            return all.length ? `<div class="gphotos" style="justify-content:center">${all.map(u => `<div class="gp"><img src="${esc(u)}" alt=""></div>`).join('')}</div>` : ''; })()}
+          ${(() => { const mine = recent.get(p.id) || []; const saved = (p.images || []).filter(id => !mine.some(m => m.id === id)); const all = [...saved.map(id => ({id, url: blob(id)})), ...mine];
+            return all.length ? `<div class="gphotos" style="justify-content:center">${all.map((x, k) => `<div class="gp"><img src="${esc(x.url)}" alt="תמונה ${k + 1} של ${esc(p.name)}"><button type="button" class="x" data-qdi="${esc(x.id)}" aria-label="מחיקת תמונה ${k + 1} של ${esc(p.name)}">×</button></div>`).join('')}</div><span class="hint" style="margin-top:-6px">תמונה שעלתה בטעות? לוחצים על ה־× שעליה.</span>` : ''; })()}
           ${stayId === p.id ? `<div class="smart-box" style="margin:0;flex-direction:column;align-items:center;text-align:center" role="status"><b>✓ נשמר. רוצה עוד תמונה של ${esc(p.name)}?</b><span class="hint">הכפתורים למטה מוסיפים עוד תמונות לאותו צמח. כשמסיימים, לוחצים "סיימתי, לצמח הבא".</span></div>` : ''}
           <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
             <label class="btn primary" for="qoCam" style="min-height:56px;font-size:1.1em">📷 ${stayId === p.id ? 'צילום עוד תמונה' : 'צילום'}</label><input type="file" id="qoCam" accept="image/*" capture="environment" class="sr">
@@ -2512,7 +2515,7 @@ function openQuickPhotos() {
             <a class="btn clay" id="qoGoogle" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&amp;q=${encodeURIComponent([p.name, p.latin].filter(Boolean).join(' '))}">🔍 חיפוש תמונה בגוגל</a>
             <button type="button" class="btn" id="qoPaste">📋 הדבקת תמונה שהועתקה</button></div>
           <p class="hint" style="margin:0;max-width:440px">בגוגל: לוחצים על התמונה ← לחיצה ארוכה (בטלפון) או לחצן ימני (במחשב) ← <b>העתקת תמונה</b>, וחוזרים לכאן ל<b>הדבקה</b>. במחשב אפשר גם פשוט ללחוץ Ctrl+V. כדאי לבחור תמונות שמותר להשתמש בהן, או תמונות שלך, לפני שמציגים אותן ללקוחות.</p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button type="button" class="btn ghost" id="qoPrev" ${pos ? '' : 'disabled'}>→ הקודם</button><button type="button" class="btn ${stayId === p.id ? 'primary' : ''}" id="qoSkip">${stayId === p.id ? 'סיימתי, לצמח הבא ←' : 'דילוג ←'}</button><button type="button" class="btn danger" id="qoDel" aria-label="מחיקת ${esc(p.name)} מהקטלוג">🗑 לא מתאים, מחיקת הצמח</button></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button type="button" class="btn danger" id="qoDel" aria-label="מחיקת ${esc(p.name)} מהקטלוג">🗑 לא מתאים, מחיקת הצמח</button></div>
           <p class="hint" id="qoState" aria-live="polite" style="margin:0">${autoNext ? 'אחרי שהתמונה עולה עוברים אוטומטית לצמח הבא.' : 'אפשר להעלות כמה תמונות שרוצים לצמח הזה, ואז ללחוץ "לצמח הבא".'}</p></div>`
         : `<div class="empty"><h3>${onlyNo ? 'לכל הצמחים כאן כבר יש תמונה 🎉' : 'אין צמחים בקטגוריה הזו'}</h3></div>`}`;
   }
@@ -2523,6 +2526,16 @@ function openQuickPhotos() {
     const q = queue(); const p = q[pos]; if (!p) return;
     const leave = () => { if (stayId) { const wasStay = stayId; stayId = null; const nq = queue(); const i = nq.findIndex(x => x.id === wasStay); return i < 0; } return false; };
     const pv = $('#qoPrev', dlg); if (pv) pv.onclick = () => { const gone = leave(); pos = Math.max(0, pos - (gone ? 1 : 1)); render(); };
+    $$('[data-qdi]', dlg).forEach(b => b.onclick = async () => {
+      if (busy) return; if (!await confirmBox('מחיקת תמונה', `למחוק את התמונה הזו של ${p.name}?`)) return;
+      const id = b.dataset.qdi; busy = true;
+      try {
+        await w('plants/' + p.id, async r => { const snap = await r.get(); const cur = (snap.exists && snap.data().images) || []; return r.update({images: cur.filter(x => x !== id), updatedAt: Date.now()}); });
+        if (assets) { try { await assets.delete(id); } catch {} }
+        const mine = (recent.get(p.id) || []).filter(m => { if (m.id === id) { URL.revokeObjectURL(m.url); return false; } return true; }); recent.set(p.id, mine);
+        p.images = (p.images || []).filter(x => x !== id); toast('התמונה נמחקה');
+      } catch {} busy = false; if (dlg.open) render();
+    });
     $('#qoDel', dlg).onclick = () => quickDeletePlant(p, () => { if (stayId === p.id) stayId = null; doneIds.delete(p.id); S.plants = S.plants.filter(x => x.id !== p.id); const nq = queue(); if (pos >= nq.length) pos = Math.max(0, nq.length - 1); if (dlg.open) render(); });
     $('#qoSkip', dlg).onclick = () => { const gone = leave(); if (!gone) pos = pos + 1; const nq = queue(); if (pos >= nq.length) { pos = Math.max(0, nq.length - 1); toast('זה הצמח האחרון ברשימה'); } render(); };
     const handle = async inp => {
