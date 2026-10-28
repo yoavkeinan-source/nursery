@@ -344,6 +344,26 @@ label.ai-filled{background:var(--clay-soft)!important}
 .gphotos .gp button.v{all:unset;cursor:zoom-in;display:block;width:100%;height:100%}
 .gphotos .gp img{width:100%;height:100%;object-fit:cover;display:block}
 .gphotos .gp .x{position:absolute;top:3px;inset-inline-end:3px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;cursor:pointer}
+.toast-act{margin-inline-start:12px;background:transparent;color:inherit;border:2px solid currentColor;border-radius:8px;padding:4px 12px;font:inherit;font-weight:800;cursor:pointer;min-height:36px}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-bottom:22px}@media (max-width:560px){.gal-grid{grid-template-columns:1fr 1fr;gap:10px}.gal-meta{padding:8px 10px}}
+.ba-pair img{max-height:46vh}
+.gal-card{all:unset;box-sizing:border-box;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s}
+.gal-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.08)}
+.gal-card:focus-visible{outline:3px solid var(--focus,#2563eb);outline-offset:2px}
+.gal-cover{position:relative;aspect-ratio:4/3;background:var(--surface-2)}
+.gal-cover img{width:100%;height:100%;object-fit:cover;display:block}
+.gal-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--ink-2)}
+.gal-badge{position:absolute;top:8px;inset-inline-start:8px;background:rgba(0,0,0,.65);color:#fff;font-size:.8rem;font-weight:700;padding:3px 10px;border-radius:999px}
+.gal-badge.t-maintenance{background:#1d4ed8}.gal-badge.t-garden{background:#15803d}.gal-badge.t-work{background:#a16207}
+.gal-meta{padding:10px 12px;display:flex;flex-direction:column;gap:2px}.gal-meta small{color:var(--ink-2)}
+.gal-card.folder .gal-cover::after{content:'';position:absolute;inset:auto 0 0 0;height:6px;background:var(--clay)}
+.gal-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media (max-width:640px){.gal-cols{grid-template-columns:1fr}}
+.gal-tile{width:104px;height:104px}.gal-add{width:104px;height:104px}
+.gal-tile .star{position:absolute;bottom:3px;inset-inline-end:3px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;cursor:pointer;font-size:15px}
+.gal-tile .star[aria-pressed="true"]{background:#f59e0b;color:#000}
+.gal-tile .mv{position:absolute;bottom:3px;inset-inline-start:3px;border:0;border-radius:8px;background:rgba(0,0,0,.6);color:#fff;font-size:.72rem;font-weight:700;padding:3px 6px;cursor:pointer}
+.ba-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ba-pair figure{margin:0;position:relative}.ba-pair button.v{all:unset;cursor:zoom-in;display:block}.ba-pair img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;display:block}
+.ba-pair figcaption{position:absolute;top:6px;inset-inline-start:6px;background:rgba(0,0,0,.65);color:#fff;font-weight:700;font-size:.8rem;padding:2px 10px;border-radius:999px}
 .gp-add{width:84px;height:84px;border-radius:10px;border:2px dashed var(--line);display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;font-size:.8rem;font-weight:700;color:var(--ink-2);text-align:center}
 .pdf-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
 .q-hint{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px}
@@ -385,6 +405,7 @@ label.ai-filled{background:var(--clay-soft)!important}
       <button class="tab" data-view="catalog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21V11M12 13c-5 0-7-3-7-8 5 0 7 3 7 8zM12 11c0-4 2-7 7-7 0 5-2 7-7 7z"/></svg>צמחים</button>
       <button class="tab" data-view="clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 4h6v3H9zM6 6h12v15H6z"/><path d="M9 12h6M9 16h4"/></svg>לקוחות</button>
       <button class="tab" data-view="prices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg>מחירון</button>
+      <button class="tab" data-view="gallery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 17l-5-5-8 7"/></svg>עבודות</button>
       <button class="tab" data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>הגדרות</button>
     </nav>
     <div class="a11y" role="group" aria-label="נגישות">
@@ -443,6 +464,8 @@ label.ai-filled{background:var(--clay-soft)!important}
   <section class="view" id="view-clients" hidden aria-labelledby="h-cl"></section>
   <!-- PRICES -->
   <section class="view" id="view-prices" hidden aria-labelledby="h-pr"></section>
+  <!-- WORK GALLERY -->
+  <section class="view" id="view-gallery" hidden aria-labelledby="h-gal"></section>
   <!-- SETTINGS -->
   <section class="view" id="view-settings" hidden aria-labelledby="h-st"></section>
 </main>
@@ -474,10 +497,10 @@ const blob = id => (window.assetUrl ? window.assetUrl(id) : '/_blob/' + id);
 const COLORS = ['#2E6B3C','#C2410C','#B4237A','#7C3AED','#0E7490','#A16207','#4D7C0F','#BE123C','#1D4ED8','#57534E'];
 const NO_AREA = 'כללי';
 const AI = window.AI_NAME || 'Claude';
-const APP_VERSION = '27.10.2026-f'; // the assistant behind the smart features
+const APP_VERSION = '28.10.2026-a'; // the assistant behind the smart features
 const CARD_MAX = 8; // details shown on a plant card
-let toastT;
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
+let toastT; const toastEl = document.getElementById('toast');
+function toast(msg, action) { const t = toastEl; let top = document.body; try { if (dlg.open) top = dlg; } catch {} if (t.parentNode !== top) top.appendChild(t); t.textContent = msg; if (action) { const b = document.createElement('button'); b.type = 'button'; b.className = 'toast-act'; b.textContent = action.label; b.onclick = () => { t.hidden = true; clearTimeout(toastT); action.fn(); }; t.append(' ', b); } t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, action ? 9000 : 3000); }
 
 const FIN = {'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ'};
 /* light Hebrew stemming: סגולה→סגול, פרחים→פרח, והצהוב→צהוב */
@@ -500,7 +523,7 @@ function lev1(a, b) {
 }
 
 /* ---------- state ---------- */
-const S = { categories: [], fields: [], sizes: [], pricing: {}, plantPricing: [], plants: [], clients: [], biz: {}, ready: {}, noDb: false };
+const S = { categories: [], fields: [], sizes: [], pricing: {}, plantPricing: [], plants: [], clients: [], gallery: [], biz: {}, ready: {}, noDb: false };
 const UI = { selMode: false, sel: new Set(ls.get('pdfSel', [])), layout: ls.get('layout', 'grid'), favOnly: false, ranges: {}, clientQ: '', clientOrder: ls.get('clientOrder', 'time'), slide: 0, slideImg: 0, overview: false, view: 'catalog', q: '', cat: 'all', filters: {}, sort: 'name', smart: null, activeClient: ls.get('activeClient', null), lastArea: ls.get('lastArea', ''), present: false, showPrices: true };
 let db = null, assets = null, sample = null, user = null, downloads = null, canWrite = false, imgLimits = null;
 
@@ -559,8 +582,8 @@ function renderBackupReminder() {
 }
 
 /* ---------- views / nav ---------- */
-const VIEWS = ['catalog', 'clients', 'prices', 'settings'];
-const ADMIN_VIEWS = ['clients', 'prices'];
+const VIEWS = ['catalog', 'clients', 'prices', 'gallery', 'settings'];
+const ADMIN_VIEWS = ['clients', 'prices', 'gallery'];
 function show(v) {
   if (!VIEWS.includes(v) || (ADMIN_VIEWS.includes(v) && !canWrite)) v = 'catalog';
   UI.view = v;
@@ -647,7 +670,7 @@ function renderView(force) {
   const host = $('#view-' + v);
   if (!force && host.contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { host.dataset.dirty = '1'; return; }
   host.dataset.dirty = '';
-  ({clients: renderClients, prices: renderPrices, settings: renderSettings})[v](host);
+  ({clients: renderClients, prices: renderPrices, gallery: renderGallery, settings: renderSettings})[v](host);
 }
 document.addEventListener('focusout', () => {
   setTimeout(() => { const host = $('#view-' + UI.view); if (host && host.dataset.dirty === '1' && !host.contains(document.activeElement)) renderView(true); }, 50);
@@ -1255,11 +1278,11 @@ ${list}
 const dlg = $('#dlg');
 function openDlg(html, onClose) {
   const prev = dlg._onClose; dlg._onClose = null; if (prev) prev(true);
-  dlg.innerHTML = html; dlg._onClose = onClose;
+  const keepToast = dlg.contains(toastEl); dlg.innerHTML = html; if (keepToast) dlg.appendChild(toastEl); dlg._onClose = onClose;
   if (!dlg.open) dlg.showModal();
   const f = dlg.querySelector('[autofocus]') || dlg.querySelector('.dlg-head button'); if (f) f.focus();
 }
-dlg.addEventListener('close', () => { const cb = dlg._onClose; dlg._onClose = null; if (cb) cb(false); dlg.innerHTML = ''; });
+dlg.addEventListener('close', () => { const cb = dlg._onClose; dlg._onClose = null; if (cb) cb(false); if (dlg.contains(toastEl)) document.body.appendChild(toastEl); dlg.innerHTML = ''; });
 dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
 function confirmBox(title, text, okLabel = 'מחיקה') {
   return new Promise(res => {
@@ -1283,7 +1306,7 @@ function openPlant(id) {
   const why = UI.smart && UI.smart.why && UI.smart.why[p.id];
   const usedBy = canWrite ? S.clients.filter(c => (c.items || []).some(it => it.plantId === p.id)) : [];
   const areaOpts = c => ['', ...((c && c.areas) || [])].map(a => `<option value="${esc(a)}" ${UI.lastArea === a ? 'selected' : ''}>${esc(a || NO_AREA)}</option>`).join('');
-  openDlg(`<div class="dlg-head"><h2 id="dlgTitle">${esc(p.name)}</h2>${canWrite ? `<button class="btn" id="favP" aria-pressed="${isFav(p)}">${isFav(p) ? '★ במועדפים' : '☆ למועדפים'}</button><button class="btn" id="editP">עריכה</button>` : ''}${X}</div>
+  openDlg(`<div class="dlg-head"><h2 id="dlgTitle">${esc(p.name)}</h2>${canWrite ? `<button class="btn" id="favP" aria-pressed="${isFav(p)}">${isFav(p) ? '★ במועדפים' : '☆ למועדפים'}</button><button class="btn" id="editP">עריכה</button><button class="btn danger" id="delP" aria-label="מחיקת ${esc(p.name)} מהקטלוג">🗑 מחיקה</button>` : ''}${X}</div>
   <div class="dlg-body"><div class="two">
     <div>
       <div class="gallery-main">${imgs.length ? `<img id="galImg" src="${esc(blob(imgs[0]))}" alt="${esc(p.name)}, תמונה 1 מתוך ${imgs.length}"><button class="zoom-btn" id="zoomBtn">הגדלה</button>${imgs.length > 1 ? `<button class="gal-nav prev" aria-label="התמונה הקודמת">›</button><button class="gal-nav next" aria-label="התמונה הבאה">‹</button>` : ''}` : placeholder(p)}</div>
@@ -1329,6 +1352,7 @@ function openPlant(id) {
   } else dlg.onkeydown = null;
   if (imgs.length) { $('#galImg').onclick = () => { if (Date.now() - (window.__swipedAt || 0) < 400) return; openViewer(imgs, i, p.name); }; $('#zoomBtn').onclick = () => openViewer(imgs, i, p.name); }
   const eb = $('#editP', dlg); if (eb) eb.onclick = () => openEditor(p.id);
+  const dp = $('#delP', dlg); if (dp) dp.onclick = () => quickDeletePlant(p, () => { if (dlg.open) dlg.close(); });
   const addP = async inp => { const files = [...inp.files]; inp.value = ''; if (!files.length) return; const st = $('#pAddSt', dlg); st.textContent = 'מעלה…';
     try { await addImagesToPlant(p.id, files); toast(files.length > 1 ? `${files.length} תמונות נוספו` : 'התמונה נוספה'); setTimeout(() => { if (dlg.open) openPlant(p.id); }, 600); }
     catch (e) { st.textContent = uploadErr(e); } };
@@ -1727,7 +1751,8 @@ function gardenPhotosHtml(c) {
   const grp = (kind, label) => { const list = ph.filter(x => x.kind === kind);
     return `<div><div class="section-title">${label}</div><div class="gphotos">${list.map(x => `<div class="gp"><button class="v" data-gpv="${esc(x.id)}" aria-label="הגדלת תמונה ${label}"><img src="${esc(blob(x.id))}" alt="" loading="lazy"></button>${assets ? `<button class="x" data-gpx="${esc(x.id)}" aria-label="מחיקת התמונה">×</button>` : ''}</div>`).join('')}
       ${assets ? `<label class="gp-add" for="gpIn-${kind}"><span aria-hidden="true" style="font-size:1.4rem">+</span>הוספה</label><input type="file" id="gpIn-${kind}" data-gpin="${kind}" accept="image/*" multiple class="sr">` : (list.length ? '' : '<span class="muted">אין תמונות</span>')}</div></div>`; };
-  return `<details class="filters" ${ph.length ? 'open' : ''}><summary>תמונות הגינה (${ph.length})</summary><div class="stack" style="padding:0 16px 16px;gap:12px">${grp('before', 'לפני')}${grp('after', 'אחרי')}<p class="hint" id="gpState" aria-live="polite" style="margin:0"></p></div></details>`;
+  const nAl = (S.gallery || []).filter(a => a.clientId === c.id).length;
+  return `<details class="filters" ${ph.length ? 'open' : ''}><summary>תמונות הגינה (${ph.length})</summary><div class="stack" style="padding:0 16px 16px;gap:12px"><div><button class="btn sm" id="toGalFolder">📁 התיקייה בגלריית העבודות${nAl ? ` (${nAl} אלבומים)` : ''}</button></div>${grp('before', 'לפני')}${grp('after', 'אחרי')}<p class="hint" id="gpState" aria-live="polite" style="margin:0"></p></div></details>`;
 }
 function clientDetail(c) {
   const items = c.items || []; const areas = c.areas || [];
@@ -1776,6 +1801,7 @@ function wireClient(host, c) {
   const items = () => (c.items || []).map(x => ({...x}));
   $$('[data-isz]', host).forEach(el => el.onchange = () => { const a = items(); a[+el.dataset.isz].sizeId = el.value; save({items: a}); });
   $$('[data-inote]', host).forEach(el => el.onchange = () => { const a = items(); a[+el.dataset.inote].note = el.value.trim(); save({items: a}); });
+  const tgf = $('#toGalFolder', host); if (tgf) tgf.onclick = () => { UI.galFolder = c.id; UI.galType = 'all'; UI.galQ = ''; show('gallery'); };
   $$('[data-gpv]', host).forEach(b => b.onclick = () => { const all = (c.photos || []); const kind = (all.find(x => x.id === b.dataset.gpv) || {}).kind; const ids = all.filter(x => x.kind === kind).map(x => x.id); openViewer(ids, ids.indexOf(b.dataset.gpv), (c.name || '') + ' · ' + (kind === 'before' ? 'לפני' : 'אחרי')); });
   $$('[data-gpx]', host).forEach(b => b.onclick = async () => { if (!await confirmBox('מחיקת תמונה', 'למחוק את התמונה של הגינה?')) return; const id = b.dataset.gpx; await save({photos: (c.photos || []).filter(x => x.id !== id)}); try { await assets.delete(id); } catch {} });
   $$('[data-gpin]', host).forEach(inp => inp.onchange = async () => {
@@ -2224,6 +2250,152 @@ const catIdsFromNames = names => (Array.isArray(names) ? names : []).map(n => S.
 const fieldSchema = () => S.fields.map(f => `- "${f.id}": ${f.label}${f.unit ? ' ביחידות ' + f.unit : ''}; סוג ${f.type}${f.options && f.options.length ? '; ערכים מותרים בלבד: ' + f.options.join(' | ') : ''}`).join('\n');
 
 /* ---------- bulk add from a list of names ---------- */
+/* ---------- quick delete of a plant (with undo) ---------- */
+async function quickDeletePlant(p, done) {
+  if (!p || !canWrite) return false;
+  const used = S.clients.filter(c => (c.items || []).some(it => it.plantId === p.id));
+  const n = (p.images || []).length;
+  const text = `למחוק את "${p.name}" מהקטלוג${n ? ` יחד עם ${n === 1 ? 'התמונה שלו' : n + ' התמונות שלו'}` : ''}?${used.length ? ` הצמח מופיע ברשימה של ${used.length === 1 ? 'לקוח אחד' : used.length + ' לקוחות'}.` : ''} אחרי המחיקה יופיע כפתור "ביטול" לכמה שניות.`;
+  if (!await confirmBox('מחיקת צמח', text, 'מחיקה')) return false;
+  const plantDoc = JSON.parse(JSON.stringify(p)); delete plantDoc.id;
+  const prDoc = S.plantPricing.find(x => x.id === p.id); const prCopy = prDoc ? (({id, ...r}) => r)(JSON.parse(JSON.stringify(prDoc))) : null;
+  try { await w('plants/' + p.id, r => r.delete()); if (prCopy) await w('plantPricing/' + p.id, r => r.delete()); } catch { return false; }
+  let undone = false;
+  const purge = setTimeout(async () => { if (undone || !assets) return; for (const a of (plantDoc.images || [])) { try { await assets.delete(a); } catch {} } }, 9000);
+  toast(`"${p.name}" נמחק`, {label: 'ביטול', fn: async () => {
+    undone = true; clearTimeout(purge);
+    await wq('plants/' + p.id, r => r.set(plantDoc)); if (prCopy) await wq('plantPricing/' + p.id, r => r.set(prCopy));
+    toast(`"${p.name}" חזר לקטלוג`);
+  }});
+  if (done) done();
+  return true;
+}
+
+/* ---------- work gallery: albums of gardens, works and maintenance (before / after), in client folders ---------- */
+const GTYPES = {garden: 'גינות שעשיתי', work: 'עבודות', maintenance: 'תחזוקה · לפני ואחרי'};
+const GT_SHORT = {garden: 'גינה', work: 'עבודה', maintenance: 'תחזוקה'};
+const NO_CLIENT = '_none';
+const nAlb = n => n === 1 ? 'אלבום אחד' : n + ' אלבומים'; const nPhotos = n => n === 1 ? 'תמונה אחת' : n + ' תמונות';
+const albumById = id => (S.gallery || []).find(a => a.id === id);
+const albumCover = a => { const ph = a.photos || []; const c = ph.find(x => x.id === a.coverId) || ph.find(x => x.kind === 'after') || ph[0]; return c ? c.id : null; };
+const clientName = (id, fallback = '') => { const c = S.clients.find(x => x.id === id); return c ? (c.name || 'ללא שם') : fallback; };
+const fmtDate = d => { if (!d) return ''; const [y, m, dd] = String(d).split('-'); return dd && m && y ? `${+dd}.${+m}.${y}` : d; };
+function galleryFolders() {
+  const map = new Map();
+  for (const a of S.gallery || []) { if (!a.clientId) continue; if (!map.has(a.clientId)) map.set(a.clientId, {id: a.clientId, name: clientName(a.clientId, a.clientName || 'לקוח'), albums: [], extra: 0}); map.get(a.clientId).albums.push(a); }
+  for (const c of S.clients) { const n = (c.photos || []).length; if (!n) continue; if (!map.has(c.id)) map.set(c.id, {id: c.id, name: c.name || 'ללא שם', albums: [], extra: 0}); map.get(c.id).extra = n; }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'he'));
+}
+function renderGallery(host) {
+  const type = UI.galType || 'all', folder = UI.galFolder || null, q = norm(UI.galQ || '');
+  const all = (S.gallery || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || (b.createdAt || 0) - (a.createdAt || 0));
+  const albums = all.filter(a => (type === 'all' || a.type === type)
+    && (!folder || (folder === NO_CLIENT ? !a.clientId : a.clientId === folder))
+    && (!q || norm([a.title, a.notes, clientName(a.clientId, a.clientName), GTYPES[a.type]].join(' ')).includes(q)));
+  const folders = folder ? [] : galleryFolders().filter(f => !q || norm(f.name).includes(q));
+  const fc = folder && folder !== NO_CLIENT ? S.clients.find(c => c.id === folder) : null;
+  const folderName = folder === NO_CLIENT ? 'אלבומים בלי לקוח' : folder ? clientName(folder, (all.find(a => a.clientId === folder) || {}).clientName || 'לקוח') : '';
+  const thumb = id => id ? `<img src="${esc(blob(id))}" alt="" loading="lazy">` : `<div class="gal-ph" aria-hidden="true"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 17l-5-5-8 7"/></svg></div>`;
+  const count = a => { const ph = a.photos || []; if (a.type !== 'maintenance') return nPhotos(ph.length); const b = ph.filter(x => x.kind === 'before').length, f = ph.filter(x => x.kind === 'after').length; return `${b} לפני · ${f} אחרי`; };
+  host.innerHTML = `<div class="page-head"><h2 id="h-gal">${folder ? `<span class="muted" style="font-weight:600">גלריה ›</span> ${esc(folderName)}` : 'גלריית עבודות'}</h2>
+      ${folder ? '<button class="btn" id="galBack">→ חזרה לכל הגלריה</button>' : ''}
+      <button class="btn primary" id="galNew">+ אלבום חדש</button></div>
+    <p class="hint" style="margin:-8px 0 14px">תמונות של גינות שעשית, עבודות ותחזוקה (לפני ואחרי). אלבום ששייכת ללקוח נכנס לתיקייה שלו.</p>
+    <div class="chip-row" role="group" aria-label="סוג עבודה">${[['all', 'הכל'], ...Object.entries(GTYPES)].map(([k, l]) => `<button class="chip" data-gt="${k}" aria-pressed="${type === k}">${esc(l)} <span class="n">${k === 'all' ? all.filter(a => !folder || (folder === NO_CLIENT ? !a.clientId : a.clientId === folder)).length : all.filter(a => a.type === k && (!folder || (folder === NO_CLIENT ? !a.clientId : a.clientId === folder))).length}</span></button>`).join('')}</div>
+    <div class="field" style="max-width:420px;margin:10px 0 18px"><label class="sr" for="galQ">חיפוש בגלריה</label><input class="inp" id="galQ" type="search" autocomplete="off" placeholder="חיפוש: שם אלבום, לקוח, הערות" value="${esc(UI.galQ || '')}"></div>
+    ${!folder && folders.length ? `<h3 class="section-title" style="font-size:1.1rem">תיקיות לקוחות</h3>
+      <div class="gal-grid folders" role="list">${folders.map(f => { const cov = f.albums.map(albumCover).find(Boolean) || ((S.clients.find(c => c.id === f.id) || {}).photos || [])[0]?.id; const nPh = f.albums.reduce((s, a) => s + (a.photos || []).length, 0) + f.extra;
+        return `<button role="listitem" class="gal-card folder" data-gf="${esc(f.id)}"><div class="gal-cover">${thumb(cov)}<span class="gal-badge">📁 תיקייה</span></div><div class="gal-meta"><b>${esc(f.name)}</b><small>${nAlb(f.albums.length)} · ${nPhotos(nPh)}</small></div></button>`; }).join('')}
+        ${all.some(a => !a.clientId) ? `<button role="listitem" class="gal-card folder" data-gf="${NO_CLIENT}"><div class="gal-cover">${thumb(all.filter(a => !a.clientId).map(albumCover).find(Boolean))}<span class="gal-badge">📁 תיקייה</span></div><div class="gal-meta"><b>בלי לקוח</b><small>${nAlb(all.filter(a => !a.clientId).length)}</small></div></button>` : ''}</div>` : ''}
+    ${fc && (fc.photos || []).length ? `<div class="smart-box" style="margin:0 0 16px"><p style="margin:0">בכרטיס של ${esc(fc.name || 'הלקוח')} יש עוד ${fc.photos.length} תמונות לפני ואחרי. <button class="btn sm" id="galClientPh">צפייה בתמונות</button> <button class="btn sm ghost" id="galToClient">לכרטיס הלקוח</button></p></div>` : ''}
+    <h3 class="section-title" style="font-size:1.1rem">${folder ? 'אלבומים' : 'כל האלבומים'}</h3>
+    ${albums.length ? `<div class="gal-grid" role="list">${albums.map(a => `<button role="listitem" class="gal-card" data-ga="${esc(a.id)}"><div class="gal-cover">${thumb(albumCover(a))}<span class="gal-badge t-${esc(a.type || 'work')}">${esc(GT_SHORT[a.type] || 'עבודה')}</span></div>
+        <div class="gal-meta"><b>${esc(a.title || 'אלבום ללא שם')}</b><small>${[a.clientId || a.clientName ? clientName(a.clientId, a.clientName) : '', fmtDate(a.date), count(a)].filter(Boolean).map(esc).join(' · ')}</small></div></button>`).join('')}</div>`
+      : `<div class="empty"><h3>${(S.gallery || []).length ? 'אין אלבומים שמתאימים לבחירה' : 'עוד אין אלבומים בגלריה'}</h3><p class="muted">לוחצים "+ אלבום חדש", בוחרים סוג (גינה, עבודה או תחזוקה), משייכים ללקוח אם רוצים, ומוסיפים תמונות מהמצלמה או מהגלריה.</p></div>`}`;
+  $('#galNew', host).onclick = () => newAlbum(folder && folder !== NO_CLIENT ? folder : '', type !== 'all' ? type : 'garden');
+  const bk = $('#galBack', host); if (bk) bk.onclick = () => { UI.galFolder = null; renderView(true); $('#h-gal').focus?.(); };
+  $$('[data-gt]', host).forEach(b => b.onclick = () => { UI.galType = b.dataset.gt; renderView(true); });
+  $$('[data-gf]', host).forEach(b => b.onclick = () => { UI.galFolder = b.dataset.gf; UI.galQ = ''; renderView(true); const h = $('#h-gal'); if (h) { h.tabIndex = -1; h.focus(); } });
+  $$('[data-ga]', host).forEach(b => b.onclick = () => openAlbum(b.dataset.ga));
+  const gq = $('#galQ', host); gq.oninput = () => { UI.galQ = gq.value; const pos = gq.selectionStart; renderView(true); const n = $('#galQ'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch {} } };
+  const cp = $('#galClientPh', host); if (cp) cp.onclick = () => openViewer(fc.photos.map(x => x.id), 0, fc.name || '');
+  const tc = $('#galToClient', host); if (tc) tc.onclick = () => { UI.activeClient = fc.id; ls.set('activeClient', fc.id); show('clients'); };
+}
+async function newAlbum(clientId = '', type = 'garden') {
+  const ref = db.collection('gallery').doc();
+  const d = new Date(); const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const doc = {title: '', type, clientId, clientName: clientId ? clientName(clientId) : '', date, notes: '', photos: [], coverId: '', createdAt: Date.now(), updatedAt: Date.now()};
+  try { await w(ref.path, r => r.set(doc)); } catch { return; }
+  if (!S.gallery) S.gallery = []; if (!albumById(ref.id)) S.gallery.push({id: ref.id, ...doc});
+  openAlbum(ref.id, true);
+}
+function openAlbum(id, isNew = false) {
+  const a0 = albumById(id); if (!a0) return; const a = JSON.parse(JSON.stringify(a0));   /* the dialog works on its own copy, so a slow save never shows old data */
+  const save = patch => { Object.assign(a, patch); return wq('gallery/' + id, r => r.update({...patch, updatedAt: Date.now()})); };
+  const photosHtml = () => {
+    const ph = a.photos || [];
+    const tile = x => `<div class="gp gal-tile"><button class="v" data-av="${esc(x.id)}" aria-label="הגדלת התמונה"><img src="${esc(blob(x.id))}" alt="" loading="lazy"></button>
+        <button class="x" data-ax="${esc(x.id)}" aria-label="מחיקת התמונה">×</button>
+        <button class="star" data-acov="${esc(x.id)}" aria-pressed="${albumCover(a) === x.id}" aria-label="${albumCover(a) === x.id ? 'זו תמונת השער' : 'קביעה כתמונת השער'}" title="תמונת השער">★</button>
+        ${a.type === 'maintenance' ? `<button class="mv" data-amv="${esc(x.id)}" aria-label="העברה ל${x.kind === 'before' ? 'אחרי' : 'לפני'}">${x.kind === 'before' ? '← אחרי' : '→ לפני'}</button>` : ''}</div>`;
+    const adder = kind => `<label class="gp-add gal-add" for="aCam-${kind}"><span aria-hidden="true" style="font-size:1.4rem">📷</span>צילום</label><input type="file" id="aCam-${kind}" data-ain="${kind}" accept="image/*" capture="environment" class="sr">
+        <label class="gp-add gal-add" for="aGal-${kind}"><span aria-hidden="true" style="font-size:1.4rem">🖼</span>מהגלריה</label><input type="file" id="aGal-${kind}" data-ain="${kind}" accept="image/*" multiple class="sr">`;
+    if (a.type === 'maintenance') {
+      const col = (kind, label) => { const list = ph.filter(x => x.kind === kind); return `<div class="gal-col"><div class="section-title">${label} (${list.length})</div><div class="gphotos">${list.map(tile).join('')}${adder(kind)}</div></div>`; };
+      const b = ph.filter(x => x.kind === 'before'), f = ph.filter(x => x.kind === 'after');
+      const pairs = Math.min(b.length, f.length);
+      return `<div class="gal-cols">${col('before', 'לפני')}${col('after', 'אחרי')}</div>
+        ${pairs ? `<details class="filters" style="margin-top:12px"><summary>השוואה: לפני מול אחרי (${pairs})</summary><div class="stack" style="padding:0 16px 16px;gap:12px">${Array.from({length: pairs}, (_, k) => `<div class="ba-pair"><figure><button class="v" data-av="${esc(b[k].id)}" aria-label="הגדלת תמונת לפני ${k + 1}"><img src="${esc(blob(b[k].id))}" alt=""></button><figcaption>לפני</figcaption></figure><figure><button class="v" data-av="${esc(f[k].id)}" aria-label="הגדלת תמונת אחרי ${k + 1}"><img src="${esc(blob(f[k].id))}" alt=""></button><figcaption>אחרי</figcaption></figure></div>`).join('')}</div></details>` : ''}`;
+    }
+    return `<div class="gphotos">${ph.map(tile).join('')}${adder('')}</div>`;
+  };
+  const clientOpts = () => `<option value="">בלי לקוח</option>${S.clients.slice().sort((x, y) => String(x.name || '').localeCompare(String(y.name || ''), 'he')).map(c => `<option value="${esc(c.id)}" ${a.clientId === c.id ? 'selected' : ''}>${esc(c.name || 'ללא שם')}</option>`).join('')}`;
+  openDlg(`<div class="dlg-head"><h2 id="dlgTitle">${esc(a.title || (isNew ? 'אלבום חדש' : 'אלבום ללא שם'))}</h2>${X}</div>
+    <div class="dlg-body stack">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div class="field" style="flex:2 1 220px"><label for="alTitle">שם האלבום</label><input class="inp" id="alTitle" value="${esc(a.title || '')}" placeholder="למשל: גינה בכפר ידידיה" autocomplete="off"></div>
+        <div class="field" style="flex:1 1 170px"><label for="alType">סוג</label><select class="inp" id="alType">${Object.entries(GTYPES).map(([k, l]) => `<option value="${k}" ${a.type === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
+        <div class="field" style="flex:1 1 170px"><label for="alClient">תיקיית לקוח</label><select class="inp" id="alClient">${clientOpts()}</select></div>
+        <div class="field" style="flex:0 1 170px"><label for="alDate">תאריך</label><input class="inp" id="alDate" type="date" value="${esc(a.date || '')}"></div>
+      </div>
+      <div class="field"><label for="alNotes">הערות (מה נעשה, צמחים, חומרים)</label><textarea class="inp" id="alNotes" rows="2">${esc(a.notes || '')}</textarea></div>
+      <div id="alPhotos">${photosHtml()}</div>
+      <p class="hint" id="alState" aria-live="polite" style="margin:0">${a.type === 'maintenance' ? 'מוסיפים תמונות "לפני" ותמונות "אחרי". הן מוצגות זו מול זו לפי הסדר.' : 'אפשר להוסיף הרבה תמונות בבת אחת. ★ קובע את תמונת השער של האלבום.'}</p>
+    </div>
+    <div class="dlg-foot"><button class="btn primary" data-close>סיום</button>${a.clientId ? `<button class="btn" id="alToClient">לכרטיס הלקוח</button>` : ''}<button class="btn danger" id="alDel" style="margin-inline-start:auto">מחיקת האלבום</button></div>`);
+  if (isNew) setTimeout(() => { const t = $('#alTitle'); if (t) t.focus(); }, 120);
+  const refresh = () => { const box = $('#alPhotos', dlg); if (box) { box.innerHTML = photosHtml(); wirePhotos(); } };
+  $('#alTitle', dlg).onchange = e => { save({title: e.target.value.trim()}); $('#dlgTitle').textContent = e.target.value.trim() || 'אלבום ללא שם'; };
+  $('#alType', dlg).onchange = e => { const t = e.target.value; const patch = {type: t}; if (t === 'maintenance') patch.photos = (a.photos || []).map(x => ({...x, kind: x.kind || 'after'})); save(patch); refresh(); $('#alState').textContent = t === 'maintenance' ? 'האלבום הוא עכשיו "תחזוקה". תמונות קיימות סומנו "אחרי", ואפשר להעביר אותן ל"לפני".' : ''; };
+  $('#alClient', dlg).onchange = e => save({clientId: e.target.value, clientName: e.target.value ? clientName(e.target.value) : ''});
+  $('#alDate', dlg).onchange = e => save({date: e.target.value});
+  $('#alNotes', dlg).onchange = e => save({notes: e.target.value.trim()});
+  const tc = $('#alToClient', dlg); if (tc) tc.onclick = () => { dlg.close(); UI.activeClient = a.clientId; ls.set('activeClient', a.clientId); show('clients'); };
+  $('#alDel', dlg).onclick = async () => {
+    const n = (a.photos || []).length;
+    if (!await confirmBox('מחיקת אלבום', `למחוק את האלבום "${a.title || 'ללא שם'}"${n ? ` ואת ${n} התמונות שבו` : ''}? אי אפשר לבטל את הפעולה.`)) return;
+    await wq('gallery/' + id, r => r.delete());
+    if (assets) for (const x of (a.photos || [])) { try { await assets.delete(x.id); } catch {} }
+    S.gallery = (S.gallery || []).filter(x => x.id !== id);
+    dlg.close(); toast('האלבום נמחק'); renderView(true);
+  };
+  function wirePhotos() {
+    $$('[data-av]', dlg).forEach(b => b.onclick = () => { const ph = a.photos || []; const kind = (ph.find(x => x.id === b.dataset.av) || {}).kind; const list = (a.type === 'maintenance' ? ph.filter(x => x.kind === kind) : ph).map(x => x.id); openViewer(list, Math.max(0, list.indexOf(b.dataset.av)), (a.title || '') + (a.type === 'maintenance' ? ' · ' + (kind === 'before' ? 'לפני' : 'אחרי') : '')); });
+    $$('[data-ax]', dlg).forEach(b => b.onclick = async () => { if (!await confirmBox('מחיקת תמונה', 'למחוק את התמונה מהאלבום?')) return; const pid = b.dataset.ax; await save({photos: (a.photos || []).filter(x => x.id !== pid), ...(a.coverId === pid ? {coverId: ''} : {})}); if (assets) { try { await assets.delete(pid); } catch {} } refresh(); });
+    $$('[data-acov]', dlg).forEach(b => b.onclick = async () => { await save({coverId: b.dataset.acov}); refresh(); toast('תמונת השער עודכנה'); });
+    $$('[data-amv]', dlg).forEach(b => b.onclick = async () => { await save({photos: (a.photos || []).map(x => x.id === b.dataset.amv ? {...x, kind: x.kind === 'before' ? 'after' : 'before'} : x)}); refresh(); });
+    $$('[data-ain]', dlg).forEach(inp => inp.onchange = async () => {
+      const files = [...inp.files].filter(f => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name)); inp.value = ''; if (!files.length) return;
+      const st = $('#alState', dlg); const added = []; let k = 0;
+      for (const f of files) { st.textContent = `מעלה תמונה ${++k} מתוך ${files.length}…`;
+        try { const b = await toJpeg(f); const r = await assets.upload(b, b.type ? undefined : {type: 'image/jpeg'}); added.push({id: r.id, kind: inp.dataset.ain, at: Date.now()}); }
+        catch (e) { st.textContent = uploadErr(e); break; } }
+      if (added.length) { await save({photos: [...(a.photos || []), ...added]}); st.textContent = `נוספו ${added.length === 1 ? 'תמונה אחת' : added.length + ' תמונות'}.`; refresh(); }
+    });
+  }
+  wirePhotos();
+}
+
 /* ---------- quick photos: many photos at once, or plant after plant ---------- */
 async function addImagesToPlant(pid, blobs, returnIds = false) {
   const ids = [];
@@ -2340,7 +2512,7 @@ function openQuickPhotos() {
             <a class="btn clay" id="qoGoogle" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&amp;q=${encodeURIComponent([p.name, p.latin].filter(Boolean).join(' '))}">🔍 חיפוש תמונה בגוגל</a>
             <button type="button" class="btn" id="qoPaste">📋 הדבקת תמונה שהועתקה</button></div>
           <p class="hint" style="margin:0;max-width:440px">בגוגל: לוחצים על התמונה ← לחיצה ארוכה (בטלפון) או לחצן ימני (במחשב) ← <b>העתקת תמונה</b>, וחוזרים לכאן ל<b>הדבקה</b>. במחשב אפשר גם פשוט ללחוץ Ctrl+V. כדאי לבחור תמונות שמותר להשתמש בהן, או תמונות שלך, לפני שמציגים אותן ללקוחות.</p>
-          <div style="display:flex;gap:10px"><button type="button" class="btn ghost" id="qoPrev" ${pos ? '' : 'disabled'}>→ הקודם</button><button type="button" class="btn ${stayId === p.id ? 'primary' : ''}" id="qoSkip">${stayId === p.id ? 'סיימתי, לצמח הבא ←' : 'דילוג ←'}</button></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button type="button" class="btn ghost" id="qoPrev" ${pos ? '' : 'disabled'}>→ הקודם</button><button type="button" class="btn ${stayId === p.id ? 'primary' : ''}" id="qoSkip">${stayId === p.id ? 'סיימתי, לצמח הבא ←' : 'דילוג ←'}</button><button type="button" class="btn danger" id="qoDel" aria-label="מחיקת ${esc(p.name)} מהקטלוג">🗑 לא מתאים, מחיקת הצמח</button></div>
           <p class="hint" id="qoState" aria-live="polite" style="margin:0">${autoNext ? 'אחרי שהתמונה עולה עוברים אוטומטית לצמח הבא.' : 'אפשר להעלות כמה תמונות שרוצים לצמח הזה, ואז ללחוץ "לצמח הבא".'}</p></div>`
         : `<div class="empty"><h3>${onlyNo ? 'לכל הצמחים כאן כבר יש תמונה 🎉' : 'אין צמחים בקטגוריה הזו'}</h3></div>`}`;
   }
@@ -2351,6 +2523,7 @@ function openQuickPhotos() {
     const q = queue(); const p = q[pos]; if (!p) return;
     const leave = () => { if (stayId) { const wasStay = stayId; stayId = null; const nq = queue(); const i = nq.findIndex(x => x.id === wasStay); return i < 0; } return false; };
     const pv = $('#qoPrev', dlg); if (pv) pv.onclick = () => { const gone = leave(); pos = Math.max(0, pos - (gone ? 1 : 1)); render(); };
+    $('#qoDel', dlg).onclick = () => quickDeletePlant(p, () => { if (stayId === p.id) stayId = null; doneIds.delete(p.id); S.plants = S.plants.filter(x => x.id !== p.id); const nq = queue(); if (pos >= nq.length) pos = Math.max(0, nq.length - 1); if (dlg.open) render(); });
     $('#qoSkip', dlg).onclick = () => { const gone = leave(); if (!gone) pos = pos + 1; const nq = queue(); if (pos >= nq.length) { pos = Math.max(0, nq.length - 1); toast('זה הצמח האחרון ברשימה'); } render(); };
     const handle = async inp => {
       const files = [...inp.files]; inp.value = ''; if (!files.length || busy) return; busy = true;
@@ -2589,13 +2762,13 @@ function saveCache() {
   clearTimeout(cacheT);
   cacheT = setTimeout(() => {
     const d = {t: Date.now(), categories: S.categories, fields: S.fields, sizes: S.sizes, plants: S.plants, biz: S.biz};
-    if (canWrite) Object.assign(d, {pricing: S.pricing, plantPricing: S.plantPricing, clients: S.clients});
+    if (canWrite) Object.assign(d, {pricing: S.pricing, plantPricing: S.plantPricing, clients: S.clients, gallery: S.gallery});
     ls.set(CACHE_KEY, d);
   }, 1500);
 }
 function loadCache() {
   const d = ls.get(CACHE_KEY, null); if (!d) return false;
-  ['categories', 'fields', 'sizes', 'plants', 'plantPricing', 'clients'].forEach(k => { if (Array.isArray(d[k]) && !S.ready[k]) S[k] = d[k]; });
+  ['categories', 'fields', 'sizes', 'plants', 'plantPricing', 'clients', 'gallery'].forEach(k => { if (Array.isArray(d[k]) && !S.ready[k]) S[k] = d[k]; });
   if (d.biz) S.biz = d.biz; if (d.pricing) S.pricing = d.pricing;
   if (Array.isArray(d.plants)) S.ready.plants = true;
   S.cacheTime = d.t; return true;
@@ -2805,7 +2978,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------- full backup (JSON with photos) and restore ---------- */
-const BACKUP_COLLS = ['categories', 'fields', 'sizes', 'plants', 'plantPricing', 'clients'];
+const BACKUP_COLLS = ['categories', 'fields', 'sizes', 'plants', 'plantPricing', 'clients', 'gallery'];
 const stripId = o => { const {id, ...rest} = o; return rest; };
 const blobToDataUrl = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b); });
 async function exportBackup(withImages, progress) {
@@ -2815,7 +2988,7 @@ async function exportBackup(withImages, progress) {
   docs.settings = {prices: S.pricing || {}}; docs.meta = {business: S.biz || {}};
   const images = {};
   if (withImages) {
-    const ids = [...new Set([...S.plants.flatMap(p => p.images || []), ...S.clients.flatMap(c => (c.photos || []).map(x => x.id)), S.biz.logoId].filter(Boolean))];
+    const ids = [...new Set([...S.plants.flatMap(p => p.images || []), ...S.clients.flatMap(c => (c.photos || []).map(x => x.id)), ...(S.gallery || []).flatMap(a => (a.photos || []).map(x => x.id)), S.biz.logoId].filter(Boolean))];
     let k = 0;
     for (const id of ids) {
       progress(`מכין תמונה ${++k} מתוך ${ids.length}…`);
@@ -2902,7 +3075,8 @@ async function importBackup(file, progress) {
     const doc = JSON.parse(JSON.stringify(d));
     if (c === 'plants') doc.images = (doc.images || []).map(mapImg).filter(Boolean);
     if (c === 'meta' && id === 'business' && doc.logoId) doc.logoId = mapImg(doc.logoId);
-    if (c === 'clients' && Array.isArray(doc.photos)) doc.photos = doc.photos.map(x => ({...x, id: mapImg(x.id)})).filter(x => x.id);
+    if ((c === 'clients' || c === 'gallery') && Array.isArray(doc.photos)) doc.photos = doc.photos.map(x => ({...x, id: mapImg(x.id)})).filter(x => x.id);
+    if (c === 'gallery' && doc.coverId) doc.coverId = mapImg(doc.coverId) || '';
     all.push([c, id, doc]);
   }
   let k = 0;
@@ -2970,7 +3144,7 @@ show(startView); renderOffline();
   db.doc('meta/business').onSnapshot(s => { S.biz = s.exists ? s.data() : {}; scheduleRender(); }, () => {});
   if (window.AI_PROVIDER) db.doc('meta/ai').onSnapshot(s => { S.ai = s.exists ? s.data() : {}; scheduleRender(); }, () => {});
   if (canWrite) {
-    sub('clients'); sub('plantPricing');
+    sub('clients'); sub('plantPricing'); sub('gallery');
     db.doc('settings/prices').onSnapshot(s => { S.pricing = s.exists ? s.data() : {}; scheduleRender(); }, () => {});
     db.doc('settings/backup').onSnapshot(s => { S.backup = s.exists ? s.data() : {}; S.ready.backup = true; scheduleRender(); }, () => {});
   }
